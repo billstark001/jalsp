@@ -1,4 +1,7 @@
 "use strict";
+Array.prototype.equals = function (other, strict) {
+    return strict ? arrayEqualsStrict(this, other) : arrayEquals(this, other);
+};
 Array.prototype.flatMap = function (callbackfn, thisArg) {
     return this.map(callbackfn).reduce((x, y) => x.concat(y), []);
 };

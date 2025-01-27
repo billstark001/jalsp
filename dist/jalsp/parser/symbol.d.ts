@@ -29,8 +29,8 @@ export declare class EpsilonSymbol extends T {
     matchNonTerminal(other: NT): boolean;
     clone(): GSymbol;
 }
-export declare function isTerminal(e: any): boolean;
-export declare function isNonTerminal(e: any): boolean;
+export declare function isTerminal(e: any): e is T;
+export declare function isNonTerminal(e: any): e is NT;
 export declare const eps: EpsilonSymbol;
 export declare const eof: T;
 export declare const EOFNUM = 0;

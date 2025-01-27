@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.printActionTable = void 0;
+exports.printActionTable = printActionTable;
 const instrument_1 = require("./instrument");
 const symbol_1 = require("./symbol");
 require("../utils/enum_extensions");
@@ -8,6 +8,12 @@ const str_1 = require("../utils/str");
 const error_1 = require("../models/error");
 const ebnf_1 = require("../ebnf/ebnf");
 const EOF_INDEX = 0;
+const defaultOperatorHandler = (prod, oprMap) => {
+    var op = prod.body.filter(t => oprMap.has(t.name))[0];
+    if (op)
+        return oprMap.get(op.name);
+    return undefined;
+};
 function printActionTable(action) {
     var _a;
     var str;
@@ -27,10 +33,9 @@ function printActionTable(action) {
         console.log(str.join(''));
     }
 }
-exports.printActionTable = printActionTable;
 class LRGenerator {
     constructor(grammar) {
-        var _a, _b;
+        var _a, _b, _c;
         this.first = {};
         this.follow = {};
         this.S1 = symbol_1.eps;
@@ -41,35 +46,35 @@ class LRGenerator {
         this.goto = {};
         this.statesTable = [];
         this.startState = 0;
-        var self = this;
+        const self = this;
         this.tokens = new Set(grammar.tokens);
         this.nonTerminals = [];
         this.terminals = [];
         this.moduleName = grammar.moduleName;
         this.actionMode = grammar.actionMode || 'function';
+        this.conflictPolicy = Object.assign({}, grammar.conflictPolicy);
+        this.conflictPolicy.filterer = (_a = this.conflictPolicy.filterer) !== null && _a !== void 0 ? _a : defaultOperatorHandler;
         this.symbols = [];
         this.symbolsTable = {};
         // determine eof
-        this.EOF = new symbol_1.T((_a = grammar.eofToken) !== null && _a !== void 0 ? _a : '<<EOF>>');
+        this.EOF = new symbol_1.T((_b = grammar.eofToken) !== null && _b !== void 0 ? _b : '<<EOF>>');
         this.symbols.push(this.EOF);
         this.symbolsTable[this.EOF.toString()] = EOF_INDEX;
         this.terminals.push(this.EOF);
         this.tokens.add(this.EOF.name);
-        this.operators = {};
+        this.operators = new Map();
         this.productions = [];
         this.actions = [];
         this.processProductions(grammar.productions, (i) => grammar.actions[i]);
         if (grammar.operators !== undefined) {
-            grammar.operators.forEach(function (opList) {
-                self.operators[opList.name] = [opList.assoc, opList.prio];
-            });
+            grammar.operators.forEach(opList => self.operators.set(opList.name, Object.assign({}, opList)));
         }
         // determine start symbol
         this.start = grammar.startSymbol ?
             this.symbols[this.symbolsTable[grammar.startSymbol]] :
             this.productions[0].head;
         this.computeFirstAndFollow();
-        var mode = (_b = grammar.mode) === null || _b === void 0 ? void 0 : _b.toUpperCase();
+        var mode = (_c = grammar.mode) === null || _c === void 0 ? void 0 : _c.toUpperCase();
         if (mode === 'LALR1') {
             this.computeLR1(true);
         }
@@ -551,9 +556,8 @@ class LRGenerator {
     resolveConflict(currentAction, newAction, a, gItem, conflict) {
         // if current action is reduce we have a prod, otherwise?
         var shiftAction, reduceAction;
-        var curtype = currentAction[0];
-        var prod;
-        if (curtype === 'reduce') {
+        var curType = currentAction[0];
+        if (curType == 'reduce') {
             reduceAction = currentAction;
             if (newAction[0] == 'reduce') {
                 if (newAction[1][0] != currentAction[1][0] || newAction[1][1] != currentAction[1][1]
@@ -570,7 +574,7 @@ class LRGenerator {
         }
         else { // current is shift
             shiftAction = currentAction;
-            if (newAction[0] === 'shift') {
+            if (newAction[0] == 'shift') {
                 if (newAction[1][0] != currentAction[1][0]) {
                     throw new error_1.ParserError(this.getConflictText('Shift/Shift', a, gItem, conflict), [gItem, conflict]);
                 }
@@ -583,47 +587,45 @@ class LRGenerator {
                 reduceAction = newAction;
             }
         }
-        prod = this.productions[reduceAction[1][2]];
+        const prod = this.productions[reduceAction[1][2]];
         // check if a is an operator
         const operators = this.operators;
-        if (operators && operators[a.name]) {
-            var aassoc = operators[a.name][0];
-            var aprio = operators[a.name][1];
+        if (operators && operators.has(a.name)) {
+            const aPrior = operators.get(a.name).prior;
             // check if prod contains an operator
-            var op = prod.body.filter(function (t) {
-                return operators[t.name]; // isTerminal(t) && 
-            })[0];
+            const op = this.conflictPolicy.filterer(prod, operators);
             if (op) {
-                var redassoc = operators[op.name][0];
-                var redprio = operators[op.name][1];
+                const { assoc: redAssoc, prior: redPrior } = op;
                 // first check if it is the same priority
-                if (aprio === redprio) {
-                    // check associativity
-                    if (redassoc === 'nonassoc') {
-                        return ['error', [`Shift/Reduce conflict: Operator ${JSON.stringify(op)} is non-associative.`]];
-                    }
-                    else if (redassoc === 'left') {
-                        // prefer reduce
-                        return reduceAction;
-                    }
-                    else {
-                        // prefer shift
-                        return shiftAction;
+                if (aPrior == redPrior) {
+                    if (redAssoc == 'left')
+                        return reduceAction; // prefer reduce
+                    else if (redAssoc == 'right')
+                        return shiftAction; // prefer shift
+                    else { // nonassoc
+                        if (this.conflictPolicy.shiftReduce == 'reduce')
+                            return reduceAction;
+                        else if (this.conflictPolicy.shiftReduce == 'shift')
+                            return shiftAction;
+                        else // not assigned
+                            return ['error', [`Shift/Reduce conflict: Operator ${JSON.stringify(op)} is non-associative.`]];
                     }
                 }
-                else if (aprio > redprio) {
+                else if (aPrior > redPrior) {
                     return shiftAction;
                 }
-                else { // aprio < redprio
+                else { // aPrior < redPrior
                     return reduceAction;
                 }
             }
-            else {
-            }
         }
         else {
-            // a is not an operator
+            if (this.conflictPolicy.shiftReduce == 'reduce')
+                return reduceAction;
+            else if (this.conflictPolicy.shiftReduce == 'shift')
+                return shiftAction;
         }
+        // a is not an operator
         throw new error_1.ParserError(this.getConflictText('Shift/Reduce', a, gItem, conflict), [gItem, conflict]);
     }
     generateParsedGrammar() {

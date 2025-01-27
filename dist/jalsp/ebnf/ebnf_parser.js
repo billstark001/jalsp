@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.default = parseEbnf;
 const token_1 = require("../models/token");
 const builder_1 = __importDefault(require("../parser/builder"));
 const generator_1 = __importDefault(require("../parser/generator"));
@@ -84,4 +85,3 @@ function parseEbnf(tokens) {
         .filter(x => x.name != 'SPACE'), 'EOF'), {}).flat();
     return res;
 }
-exports.default = parseEbnf;

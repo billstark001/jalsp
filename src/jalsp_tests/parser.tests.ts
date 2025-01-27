@@ -8,7 +8,7 @@ var lexerAmb = new RegExpLexerBuilder()
   .t('id', /[a-zA-Z_$][0-9a-zA-Z_$]*/)
   .t('int', /[0-9]+/, (res) => Number(res[0]))
   .t((v, l) => l, /[\+\-\*\/\%\(\)\[\]\,\.]/)
-  .t(() => undefined, '[ \xa0\u3000]+')
+  .t(() => undefined, /[ \xa0\u3000]+/)
   .build('eof');
 
 
@@ -19,7 +19,7 @@ var builderAmb = newParser()
   .ebnf('ARR_LITERAL = E { "," E } [","]', (e: string, arr: string[][], __) => {
     // console.log(arr);
     return arr === undefined ?
-      [e] : 
+      [e] :
       [e].concat(arr.map(x => x[1]));
   })
   .bnf('E = "[" ARR_LITERAL "]"', (_, arr, __) => {

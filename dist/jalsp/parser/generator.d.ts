@@ -1,5 +1,5 @@
 import { IEquatable } from "../utils/equatable";
-import { AutomatonActionRecord, GrammarDefinition, ProductionHandler, SimpleProduction } from "../models/grammar";
+import { AutomatonActionRecord, ConflictPolicy, GrammarDefinition, OperatorDefinition, ProductionHandler, SimpleProduction } from "../models/grammar";
 import { GItem, LR1Item, Production } from "./instrument";
 import { GSymbol, NT, T } from "./symbol";
 import '../utils/enum_extensions';
@@ -25,12 +25,7 @@ export default class LRGenerator {
     tokens: Set<string>;
     productions: Production[];
     actions: (ProductionHandler | undefined)[];
-    operators: {
-        [name: string]: {
-            [0]: 'nonassoc' | 'left' | 'right';
-            [1]: number;
-        };
-    };
+    operators: Map<string, OperatorDefinition>;
     start: GSymbol;
     moduleName: string;
     actionMode: 'function' | 'constructor';
@@ -59,6 +54,7 @@ export default class LRGenerator {
     };
     statesTable: GItem[][] | LR1Item[][];
     startState: number;
+    conflictPolicy: ConflictPolicy;
     constructor(grammar: GrammarDefinition);
     computeAuto(): void;
     determineS1(): void;

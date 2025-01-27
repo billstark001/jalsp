@@ -24,7 +24,7 @@ class LRGrammarBuilder {
         this.productions = Array.from((_b = (_a = builder === null || builder === void 0 ? void 0 : builder.productions) !== null && _a !== void 0 ? _a : def === null || def === void 0 ? void 0 : def.productions) !== null && _b !== void 0 ? _b : [])
             .map(x => ({ name: x.name, expr: x.expr, action: x.action }));
         this.operators = Array.from((_d = (_c = builder === null || builder === void 0 ? void 0 : builder.operators) !== null && _c !== void 0 ? _c : def === null || def === void 0 ? void 0 : def.operators) !== null && _d !== void 0 ? _d : [])
-            .map(x => ({ assoc: x.assoc, name: x.name, prio: x.prio }));
+            .map(x => Object.assign({}, x));
         this.prodCache = new Map();
         this.productions.forEach((x, i) => this.prodCache.set(JSON.stringify([x.name, x.expr]), i));
         this.oprCache = new Map();
@@ -102,7 +102,7 @@ class LRGrammarBuilder {
         oprs.forEach((name) => {
             const elem = {
                 name: name,
-                prio: hier,
+                prior: hier,
                 assoc: assoc
             };
             if (hier < this.lowestHierarchy)

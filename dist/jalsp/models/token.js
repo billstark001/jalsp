@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.WrappedTokenArray = exports.stringifyToken = void 0;
+exports.WrappedTokenArray = void 0;
+exports.stringifyToken = stringifyToken;
 const EOF = (str) => ({
     name: str,
     lexeme: str,
@@ -16,7 +17,6 @@ function stringifyToken(t) {
         posStr = ` at position ${t.position}`;
     return `${JSON.stringify(t.value)}(${t.name}/${JSON.stringify(t.lexeme)})` + posStr;
 }
-exports.stringifyToken = stringifyToken;
 class WrappedTokenArray {
     constructor(tokens, eof) {
         this.tokens = tokens;

@@ -1,20 +1,22 @@
 "use strict";
 // EBNF elements
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.compileActionRecord = exports.identityFunc = exports.convertToBnf = exports.isEbnfList2 = exports.isEbnf = void 0;
+exports.identityFunc = void 0;
+exports.isEbnf = isEbnf;
+exports.isEbnfList2 = isEbnfList2;
+exports.convertToBnf = convertToBnf;
+exports.compileActionRecord = compileActionRecord;
 const str_1 = require("../utils/str");
 function isEbnf(elem) {
     if (elem == undefined || elem instanceof String || typeof (elem) == 'string')
         return false;
     return elem.isEbnf == true;
 }
-exports.isEbnf = isEbnf;
 function isEbnfList2(elem) {
     return elem instanceof Array
         && elem[0] instanceof Array
         && (isEbnf(elem[0][0]) || typeof (elem[0][0]) == 'string' || elem[0][0] instanceof String);
 }
-exports.isEbnfList2 = isEbnfList2;
 // conversion
 // special cases of types
 function convertSingle(prod, getName) {
@@ -178,7 +180,6 @@ function convertToBnf(unparsed, actionOverride) {
     }
     return converted;
 }
-exports.convertToBnf = convertToBnf;
 // function compile
 const identityFunc = (...args) => args;
 exports.identityFunc = identityFunc;
@@ -225,7 +226,6 @@ function compileActionRecord(rec, f) {
         return nextFunc;
     }
 }
-exports.compileActionRecord = compileActionRecord;
 /*
 export function getBnfName(self: EbnfElement, head: string, id: number, additionalLength: number) {
   return `EBNF_${self.type}_${head}_${id}_L${additionalLength}`;

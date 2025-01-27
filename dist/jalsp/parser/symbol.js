@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.EOFNUM = exports.eof = exports.eps = exports.isNonTerminal = exports.isTerminal = exports.EpsilonSymbol = exports.T = exports.NT = exports.GSymbol = void 0;
+exports.EOFNUM = exports.eof = exports.eps = exports.EpsilonSymbol = exports.T = exports.NT = exports.GSymbol = void 0;
+exports.isTerminal = isTerminal;
+exports.isNonTerminal = isNonTerminal;
 class GSymbol {
     constructor(name) {
         this.name = name;
@@ -76,11 +78,9 @@ exports.EpsilonSymbol = EpsilonSymbol;
 function isTerminal(e) {
     return e instanceof T;
 }
-exports.isTerminal = isTerminal;
 function isNonTerminal(e) {
     return e instanceof NT;
 }
-exports.isNonTerminal = isNonTerminal;
 exports.eps = new EpsilonSymbol();
 exports.eof = new T('<<EOF>>');
 exports.EOFNUM = 0;

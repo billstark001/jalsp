@@ -19,53 +19,66 @@ class RegExpLexerBuilder {
                 def = lexicon;
             }
         }
+        // shallow copy of arrays
         this.actions = Array.from((_b = (_a = builder === null || builder === void 0 ? void 0 : builder.actions) !== null && _a !== void 0 ? _a : def === null || def === void 0 ? void 0 : def.actions) !== null && _b !== void 0 ? _b : [])
-            .map(x => ({ h: x.h, n: x.n }));
+            .map(x => (Object.assign({}, x)));
         this.records = Array.from((_d = (_c = builder === null || builder === void 0 ? void 0 : builder.records) !== null && _c !== void 0 ? _c : def === null || def === void 0 ? void 0 : def.records) !== null && _d !== void 0 ? _d : [])
-            .map(x => [x[0], x[1], x[2], x[3]]);
-        this.usedTokens = new Set(this.records.map(x => x[0]));
+            .map(x => (Object.assign({}, x)));
+        this.usedTokens = new Set(this.records.map(x => x.name));
         this.optionalToken = (_e = builder === null || builder === void 0 ? void 0 : builder.optionalToken) !== null && _e !== void 0 ? _e : 'OPTIONAL_TOKEN_0';
     }
     registerAction(h, n) {
-        return this.actions.push({ h: h, n: n }) - 1;
+        return this.actions.push({ handler: h, nameSelector: n }) - 1;
     }
     /**
      *
      * @param name The token name.
-     * @param pattern The matching pattern. global flag will be moved and sticky flag will be appended when it finally compiles to a RegExp object.
+     * @param pattern The matching pattern.
+     * - String inputs are treated as an exact match of that string.
+     * - RegExp inputs are treated as the expression
+     * with global flag moved and sticky flag appended.
      * @param f The handler.
      */
     t(name, pattern, f) {
-        var flags = 'y';
-        var str = '';
-        if (pattern instanceof RegExp) {
-            flags = pattern.flags;
-            flags = flags.replace('g', '');
-            if (flags.indexOf('y') < 0)
-                flags += 'y';
-            str = pattern.source;
-        }
-        else {
-            str = pattern;
-        }
-        // const regex = new RegExp(str, flags);
+        // parse name
         var realName;
         var sel = undefined;
         if (typeof (name) == 'string')
             realName = name;
         else {
-            while (this.usedTokens.has(this.optionalToken))
+            while (this.usedTokens.has(this.optionalToken)) {
                 this.optionalToken = (0, str_1.getIncrementName)(this.optionalToken);
+            }
             realName = this.optionalToken;
             sel = name;
         }
         this.usedTokens.add(realName);
-        this.records.push([
-            realName,
-            str,
-            flags,
-            this.registerAction(f, sel)
-        ]);
+        // register handler
+        const handlerIndex = this.registerAction(f, sel);
+        const result = {
+            name: realName,
+            handlerIndex,
+            pattern: '',
+        };
+        // parse pattern
+        if (pattern instanceof RegExp) {
+            result.pattern = pattern.source;
+            let flags = pattern.flags;
+            flags = flags.replace('g', '');
+            if (flags.indexOf('y') < 0) {
+                flags += 'y';
+            }
+            result.isRegExp = true;
+            result.flags = flags;
+        }
+        else {
+            result.pattern = pattern;
+            delete result.isRegExp;
+            delete result.flags;
+        }
+        // push back the record
+        this.records.push(result);
+        // chained calling
         return this;
     }
     define(eof) {

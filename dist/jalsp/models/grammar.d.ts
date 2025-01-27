@@ -1,3 +1,4 @@
+import { Production } from "../parser/instrument";
 export type ProductionHandler = (...args: any[]) => (any | undefined);
 /**
  * modify the input data, and hand in to the next function or do nothing
@@ -26,7 +27,13 @@ export interface SimpleProduction {
 export interface OperatorDefinition {
     name: string;
     assoc: 'nonassoc' | 'left' | 'right';
-    prio: number;
+    prior: number;
+}
+export interface ConflictPolicy {
+    shiftReduce?: 'reduce' | 'shift' | 'error';
+    reduceReduce?: 'existing' | 'new' | 'error';
+    shiftShift?: 'existing' | 'new' | 'error';
+    filterer?: (prod: Production, oprSet: Map<string, OperatorDefinition>) => OperatorDefinition | undefined;
 }
 export interface GrammarDefinition {
     moduleName: string;
@@ -38,6 +45,7 @@ export interface GrammarDefinition {
     operators: OperatorDefinition[];
     startSymbol?: string;
     eofToken?: string;
+    conflictPolicy?: ConflictPolicy;
 }
 export interface AutomatonActionRecord {
     [0]: 'reduce' | 'accept' | 'shift' | 'error';

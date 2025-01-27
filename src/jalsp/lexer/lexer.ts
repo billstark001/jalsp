@@ -8,24 +8,25 @@ const ID: TokenHandler = (arr) => {
 
 interface LexerRecord {
   name: string;
-  pat: RegExp;
+  pat: RegExp | string;
   f: TokenHandler;
   n?: TokenNameSelector;
 }
 
 export enum PositionOptions {
-  Begin, 
-  End, 
-  Current, 
+  Begin,
+  End,
+  Current,
 }
 
 export default class Lexer implements TokenStream {
 
-  records: LexerRecord[]
   str?: string;
   rec?: number[];
   pos: number;
   eof: string;
+
+  readonly records: LexerRecord[];
 
   constructor({ actions, records, eofToken }: TokenDefinition) {
     this.records = [];
@@ -33,17 +34,21 @@ export default class Lexer implements TokenStream {
     this.pos = 0;
     this.eof = eofToken ?? '<<EOF>>';
 
-    for (var rec of records) {
-      let r2 = rec[2];
-      if (r2.indexOf('y') < 0)
-        r2 += 'y';
-      const regex = new RegExp(rec[1], r2);
+    for (const rec of records) {
+      const { name, pattern, isRegExp, flags, handlerIndex } = rec;
 
-      this.records.push({ 
-        name: rec[0], 
-        pat: regex, 
-        f: actions[rec[3]].h ?? ID, 
-        n: actions[rec[3]].n
+      // assume the flags are clean
+      // compile the regexp if necessary
+      const pat: RegExp | string = isRegExp
+        ? new RegExp(pattern, flags || 'y')
+        : pattern;
+
+
+      this.records.push({
+        name,
+        pat,
+        f: actions[handlerIndex].handler ?? ID,
+        n: actions[handlerIndex].nameSelector
       });
     }
   }
@@ -66,52 +71,96 @@ export default class Lexer implements TokenStream {
     return this;
   }
 
-  nextToken(): Token {
+  nextToken(advance = true): Token {
     if (this.str == undefined)
       throw new LexerError("No input string assigned.");
-      
+
     this.rec = this.rec ?? getLinePositions(this.str);
-    if (this.pos < 0 || this.pos > this.str.length)
-      throw new LexerError(`Invalid pointer position: ${this.pos}.`);
-    else if (this.pos >= this.str.length)
-      return { name: this.eof, value: this.eof, lexeme: this.eof, position: this.pos, pos: this.currentFilePosition() }
+    const origPos = this.pos;
+
+    if (origPos < 0 || origPos > this.str.length)
+      throw new LexerError(`Invalid pointer position: ${origPos}.`);
+    else if (origPos >= this.str.length) {
+      // EOF reached
+      return {
+        name: this.eof,
+        value: this.eof,
+        lexeme: this.eof,
+        position: origPos,
+        pos: this.currentFilePosition()
+      }
+    }
+
     else {
 
-
+      // match each record
       for (const { name, pat, f, n } of this.records) {
-        pat.lastIndex = this.pos;
-        var res: RegExpExecArray | null;
-        if ((res = pat.exec(this.str)) != null) {
-          this.pos = pat.lastIndex;
-          // determine value
-          const val = f(res) ?? res[0];
+        let lexeme: string | undefined = undefined;
+        let arr: RegExpExecArray | undefined = undefined;
+        let lexemeIndex: number = -1;
+        let advanced = false;
+
+        // check if lexeme matches
+        if (pat instanceof RegExp) {
+          pat.lastIndex = origPos;
+          const res = pat.exec(this.str);
+          if (res != null) {
+            lexeme = res[0];
+            lexemeIndex = res.index;
+            arr = res;
+            if (advance) {
+              this.pos = pat.lastIndex;
+              advanced = true; 
+            }
+          }
+        } else {
+          if (this.str.startsWith(pat, origPos)) {
+            lexeme = pat;
+            lexemeIndex = origPos;
+            if (advance) {
+              this.pos = origPos + pat.length;
+              advanced = true;
+            }
+          }
+        }
+
+        // if the token is 0-length
+        if (advanced && this.pos == origPos) {
+          var p = this.currentFilePosition();
+          throw new LexerError(`Zero-length token at position ${this.pos}/(${p.line}:${p.col})`);
+        }
+
+        if (lexeme != null) {
+          const value = f(lexeme, lexemeIndex, arr) ?? lexeme;
           // determine name
           var realName = name;
-          if (n !== undefined) { // discard
-            var _realName = n(val, res[0]);
-            if (_realName === undefined)
+          if (n !== undefined) {
+            var _realName = n(value, lexeme);
+            if (_realName === undefined) // discard the token
               return this.nextToken();
             else
               realName = _realName;
           }
           // form token
           var ret: Token = {
-            name: realName, 
-            lexeme: res[0], 
-            value: val, 
-            position: res.index, 
-            pos: getLCIndex(this.rec, res.index, true)
+            name: realName,
+            lexeme,
+            value,
+            position: lexemeIndex,
+            pos: getLCIndex(this.rec, lexemeIndex, true)
           }
           return ret;
         }
       }
 
+      // no match
+      // origPos should equate this.pos
       var p = this.currentFilePosition();
       throw new LexerError(`Unknown token ${JSON.stringify(
-        this.pos + 10 < this.str.length ? 
-        this.str.substring(this.pos, this.pos + 10) + '...' : 
-        this.str.substring(this.pos)
-        )} at position ${this.pos}/(${p.line}:${p.col})`);
+        origPos + 10 < this.str.length ?
+          this.str.substring(origPos, origPos + 10) + '...' :
+          this.str.substring(origPos)
+      )} at position ${origPos}/(${p.line}:${p.col})`);
     }
   }
   isEOF(t: Token): boolean {

@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getLCIndex = exports.getLinePositions = exports.getIncrementName = void 0;
+exports.getIncrementName = getIncrementName;
+exports.getLinePositions = getLinePositions;
+exports.getLCIndex = getLCIndex;
 const incRegex = /_([0-9]+)$/;
 const returnRegex = /\r?\n/g;
 function getIncrementName(current) {
@@ -14,7 +16,6 @@ function getIncrementName(current) {
         return current + '_0';
     }
 }
-exports.getIncrementName = getIncrementName;
 function getLinePositions(str) {
     returnRegex.lastIndex = 0;
     const ret = [0];
@@ -24,7 +25,6 @@ function getLinePositions(str) {
     }
     return ret;
 }
-exports.getLinePositions = getLinePositions;
 function getLCIndex(record, pos, lineOneBased, columnOneBased) {
     const ob = lineOneBased ? 1 : 0;
     const obc = columnOneBased ? 1 : 0;
@@ -50,4 +50,3 @@ function getLCIndex(record, pos, lineOneBased, columnOneBased) {
         col: pos - record[lb] + obc
     };
 }
-exports.getLCIndex = getLCIndex;

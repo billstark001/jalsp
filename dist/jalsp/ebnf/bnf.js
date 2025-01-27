@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.parseBnf = exports.lexBnf = exports.handleSingleQuoteString = void 0;
+exports.handleSingleQuoteString = handleSingleQuoteString;
+exports.lexBnf = lexBnf;
+exports.parseBnf = parseBnf;
 require("ts-replace-all");
 const str_1 = require("../utils/str");
 ;
@@ -39,7 +41,6 @@ function handleSingleQuoteString(strIn) {
         .replaceAll('"', '\\"');
     return '"' + strIn + '"';
 }
-exports.handleSingleQuoteString = handleSingleQuoteString;
 function lexBnf(grammar, ebnf) {
     var dict = ebnf ? EBNF_SET : BNF_SET;
     var pos = 0;
@@ -76,7 +77,6 @@ function lexBnf(grammar, ebnf) {
     }
     return ret;
 }
-exports.lexBnf = lexBnf;
 const P_NON_COMMA = /(i)( *= *)((?: *(?:i *)*\|?)*)/y;
 const P_COMMA = /(i)( *= *)((?: *(?:i *,? *)*\|?)*)/y;
 const P_SPACE = / +/y;
@@ -128,7 +128,6 @@ function parseBnf(tokens, commaSeparate, action) {
     }
     return ret;
 }
-exports.parseBnf = parseBnf;
 function parseProductionNonComma(p) {
     const ret = [];
     var cur = [];
