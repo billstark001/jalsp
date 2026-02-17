@@ -3,7 +3,7 @@ import { getIncrementName } from "../utils/str";
 import Lexer from "./lexer";
 
 
-export default class RegExpLexerBuilder {
+export class RegExpLexerBuilder {
 
   protected actions: ActionRecord[];
   protected records: TokenRecord[];

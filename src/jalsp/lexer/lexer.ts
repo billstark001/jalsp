@@ -3,9 +3,7 @@ import { LexerError } from "../models/error";
 import { Token, TokenDefinition, TokenHandler, TokenNameSelector, TokenStream } from "../models/token";
 import { getLCIndex, getLinePositions, Position } from "../utils/str";
 
-const ID: TokenHandler = (arr) => {
-
-}
+const dummyHandler: TokenHandler = () => { }
 
 interface LexerRecord {
   name: string;
@@ -48,7 +46,7 @@ export default class Lexer implements TokenStream {
       this.records.push({
         name,
         pat,
-        f: actions[handlerIndex].handler ?? ID,
+        f: actions[handlerIndex].handler ?? dummyHandler,
         n: actions[handlerIndex].nameSelector
       });
     }
@@ -111,7 +109,7 @@ export default class Lexer implements TokenStream {
             arr = res;
             if (advance) {
               this.pos = pat.lastIndex;
-              advanced = true; 
+              advanced = true;
             }
           }
         } else {
@@ -164,6 +162,17 @@ export default class Lexer implements TokenStream {
       )} at position ${origPos}/(${p.line}:${p.col})`);
     }
   }
+
+  nextTokens(step: number): Token[] {
+    if (step < 1) throw new Error(`Invalid step: ${step}`);
+    const ret: Token[] = [];
+    for (let i = 0; i < step; i++) {
+      const t = this.nextToken(true);
+      ret.push(t);
+    }
+    return ret;
+  }
+
   isEOF(t: Token): boolean {
     return t.name == this.eof;
   }
