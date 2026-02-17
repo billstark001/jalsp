@@ -110,7 +110,7 @@ typings/
 .env.local
 
 
-# dist/
+dist/
 .vscode/
 
 **/.DS_Store

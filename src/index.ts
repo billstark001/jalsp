@@ -1,51 +1,30 @@
-import * as bnf from './jalsp/ebnf/bnf';
-import * as ebnf from './jalsp/ebnf/ebnf';
-import * as ebnfParser from './jalsp/ebnf/ebnf_parser';
-import RegExpLexerBuilder from './jalsp/lexer/builder';
-import LRGrammarBuilder from './jalsp/parser/builder';
+import { lexBnf, parseBnf } from './bnf/bnf';
+import { lexAbnf, parseAbnf } from './bnf/abnf';
+import { parseEbnf } from './ebnf/ebnf-parser';
+import { LexerBuilder } from './lexer/builder';
+import { LRGrammarBuilder } from './lr/builder';
+import { Lexer } from './lexer/lexer';
+import { Parser } from './lr/parser';
 
-
-import { GrammarDefinition } from './jalsp/models/grammar';
-import { TokenDefinition } from './jalsp/models/token';
-
-const lexBnf = bnf.lexBnf;
-const parseBnf = bnf.parseBnf;
-const parseEbnf = ebnfParser.default;
-const convertToBnf = ebnf.convertToBnf;
-const compileActionRecord = ebnf.compileActionRecord;
-
-const newLexer = (lexicon?: TokenDefinition | RegExpLexerBuilder) => 
-  new RegExpLexerBuilder(lexicon);
-const newParser = (grammar?: GrammarDefinition | LRGrammarBuilder) => {
-  var ret = new LRGrammarBuilder(grammar);
-  ret.registerEbnfParser(parseEbnf);
-  return ret;
-};
+import { LRGenerator } from './lr/generator';
+import { convertToBnf } from './ebnf/ebnf';
+import { compileActionRecord } from './lr/utils';
 
 export {
-  lexBnf, 
-  parseBnf, 
-  parseEbnf, 
-  convertToBnf, 
-  compileActionRecord, 
+  LexerBuilder,
+  LRGrammarBuilder,
+  Lexer,
+  Parser,
+  LRGenerator,
 
-  newLexer, 
-  newParser,
+  lexBnf,
+  parseBnf,
+  lexAbnf,
+  parseAbnf,
+  parseEbnf,
+  convertToBnf,
+  compileActionRecord,
 };
 
-export * from './jalsp/models/token';
-export * from './jalsp/models/grammar';
-export * from './jalsp/models/error';
-
-export * from './jalsp/lexer/lexer';
-export * from './jalsp/lexer/builder';
-
-export * from './jalsp/parser/parser';
-export * from './jalsp/parser/builder';
-export * from './jalsp/parser/generator';
-
-export { Position } from './jalsp/utils/str';
-
-import Lexer from './jalsp/lexer/lexer';
-import Parser from './jalsp/parser/parser';
-export { Lexer, Parser };
+export type * from './lexer/types';
+export type * from './lr/types';

@@ -1,6 +1,7 @@
 import typescript from '@rollup/plugin-typescript';
 import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
+import terser from '@rollup/plugin-terser';
 import dts from 'rollup-plugin-dts';
 
 const external = ['ts-replace-all'];
@@ -30,6 +31,33 @@ export default [
         declaration: false,
         declarationMap: false,
       }),
+    ],
+  },
+  // Minified ESM and CJS builds
+  {
+    input: 'src/index.ts',
+    output: [
+      {
+        file: 'dist/index.esm.min.js',
+        format: 'esm',
+        sourcemap: true,
+      },
+      {
+        file: 'dist/index.cjs.min.js',
+        format: 'cjs',
+        sourcemap: true,
+      },
+    ],
+    external,
+    plugins: [
+      resolve(),
+      commonjs(),
+      typescript({
+        tsconfig: './tsconfig.json',
+        declaration: false,
+        declarationMap: false,
+      }),
+      terser(),
     ],
   },
   // Type definitions

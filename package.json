@@ -16,16 +16,15 @@
     "build": "rollup -c",
     "test": "jest",
     "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix"
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "prepublishOnly": "pnpm build"
   },
   "author": "Bill Stark",
   "license": "MIT",
-  "dependencies": {
-    "ts-replace-all": "^1.0.0"
-  },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^29.0.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-terser": "^0.4.4",
     "@rollup/plugin-typescript": "^12.3.0",
     "@types/jest": "^30.0.0",
     "@typescript-eslint/eslint-plugin": "^8.56.0",
@@ -35,7 +34,13 @@
     "rollup": "^4.57.1",
     "rollup-plugin-dts": "^6.3.0",
     "ts-jest": "^29.4.6",
+    "tslib": "^2.8.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
-  }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ]
 }
