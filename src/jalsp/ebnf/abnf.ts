@@ -1,10 +1,5 @@
-// abnf.ts
-/**
- * ABNF parser (RFC 5234)
- */
-
-import { Token } from '../models/token';
-import { BnfElement, SimpleProduction } from '../models/grammar';
+import { Token } from '../lexer/types';
+import { BnfElement, SimpleProduction } from './types';
 import { ABNF_SET } from './syntax';
 import { tokenize } from './utils';
 
@@ -75,7 +70,9 @@ export function parseAbnf(tokens: Token<BnfElement>[]): SimpleProduction[] {
     if (!alternatives.length) throw new Error(`Empty production for '${name}'`);
 
     const action = isIncremental ? 1 : undefined;
-    alternatives.forEach(expr => ret.push({ name, expr, action }));
+    for (const expr of alternatives) {
+      ret.push({ name, expr, action });
+    }
     return null;
   };
 

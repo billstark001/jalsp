@@ -1,11 +1,9 @@
+import type { Position } from "./types";
+
 
 const incRegex = /_([0-9]+)$/;
 const returnRegex = /\r?\n/g;
 
-export interface Position {
-  line: number,
-  col: number,
-}
 
 export function getIncrementName(current: string): string {
   const matchRes = incRegex.exec(current);

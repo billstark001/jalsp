@@ -1,5 +1,5 @@
 import { RegExpLexerBuilder } from './builder';
-import Lexer, { PositionOptions } from './lexer';
+import { Lexer } from './lexer';
 
 const testLexer = new RegExpLexerBuilder()
   .t(() => undefined, / +/)
@@ -132,7 +132,7 @@ describe('Token Name Selectors', () => {
 
     lexer.reset('hello // this is a comment');
     expect(lexer.nextToken().name).toBe('WORD');
-    expect(lexer.nextToken().name).toBe('<<EOF>>');
+    expect(lexer.nextToken().name).toBe(Lexer.DEFAULT_EOF_TOKEN);
   });
 
   it('should rename tokens based on value', () => {
@@ -253,7 +253,7 @@ describe('Seek Operations', () => {
   it('should seek from current position', () => {
     lexer.reset('abcdef');
     lexer.nextToken(); // advance to position 1
-    lexer.seek(2, PositionOptions.Current);
+    lexer.seek(2, 'current');
 
     const token = lexer.nextToken();
     expect(token.lexeme).toBe('d');
@@ -261,7 +261,7 @@ describe('Seek Operations', () => {
 
   it('should seek from the end', () => {
     lexer.reset('abcdef');
-    lexer.seek(-2, PositionOptions.End);
+    lexer.seek(-2, 'end');
 
     const token = lexer.nextToken();
     expect(token.lexeme).toBe('e');
@@ -376,9 +376,9 @@ describe('EOF Handling', () => {
     lexer.nextToken();
 
     const [t1, t2, t3] = lexer.nextTokens(3);
-    expect(t1.name).toBe('<<EOF>>');
-    expect(t2.name).toBe('<<EOF>>');
-    expect(t3.name).toBe('<<EOF>>');
+    expect(t1.name).toBe(Lexer.DEFAULT_EOF_TOKEN);
+    expect(t2.name).toBe(Lexer.DEFAULT_EOF_TOKEN);
+    expect(t3.name).toBe(Lexer.DEFAULT_EOF_TOKEN);
   });
 });
 
@@ -410,7 +410,7 @@ describe('Advanced Pattern Matching', () => {
     expect(t1.lexeme).toBe('if');
     expect(t2.name).toBe('IDENTIFIER');
     expect(t2.lexeme).toBe('x');
-    expect(t3.name).toBe('<<EOF>>');
+    expect(t3.name).toBe(Lexer.DEFAULT_EOF_TOKEN);
   });
 });
 
@@ -477,7 +477,7 @@ describe('Complex Lexers', () => {
       'STRING',      // "success"
       'SEMICOLON',   // ;
       'RBRACE',      // }
-      '<<EOF>>'
+      Lexer.DEFAULT_EOF_TOKEN
     ]);
   });
 });

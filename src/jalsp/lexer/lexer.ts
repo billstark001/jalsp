@@ -1,7 +1,10 @@
-import { DEFAULT_EOF_TOKEN } from "../models/constants";
-import { LexerError } from "../models/error";
-import { Token, TokenDefinition, TokenHandler, TokenNameSelector, TokenStream } from "../models/token";
-import { getLCIndex, getLinePositions, Position } from "../utils/str";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import {
+  Position,
+  Token, TokenDefinition, TokenHandler, TokenNameSelector, TokenStream,
+  LexerPositionOptions,
+} from "./types";
+import { getLCIndex, getLinePositions } from "./utils";
 
 const dummyHandler: TokenHandler = () => { }
 
@@ -12,13 +15,22 @@ interface LexerRecord {
   n?: TokenNameSelector;
 }
 
-export enum PositionOptions {
-  Begin,
-  End,
-  Current,
+export class LexerError extends Error {
+
+  additional?: any;
+
+  constructor(msg: string, additional?: any) {
+    super(msg);
+    this.additional = additional;
+  }
+
 }
 
-export default class Lexer implements TokenStream {
+export const DEFAULT_EOF_TOKEN = '<<EOF>>';
+
+export class Lexer implements TokenStream {
+
+  static readonly DEFAULT_EOF_TOKEN = DEFAULT_EOF_TOKEN;
 
   str?: string;
   rec?: number[];
@@ -31,7 +43,7 @@ export default class Lexer implements TokenStream {
     this.records = [];
     this.str = undefined;
     this.pos = 0;
-    this.eof = eofToken || DEFAULT_EOF_TOKEN;
+    this.eof = eofToken || Lexer.DEFAULT_EOF_TOKEN;
 
     for (const rec of records) {
       const { name, pattern, isRegExp, flags, handlerIndex } = rec;
@@ -60,11 +72,11 @@ export default class Lexer implements TokenStream {
     return this;
   }
 
-  seek(pos: number, from?: PositionOptions) {
-    from = from ?? PositionOptions.Begin;
-    if (from == PositionOptions.Current)
+  seek(pos: number, from?: LexerPositionOptions) {
+    from = from ?? 'begin';
+    if (from === 'current')
       pos += this.pos;
-    else if (from == PositionOptions.End)
+    else if (from === 'end')
       pos += this.str?.length ?? 0;
     this.pos = pos;
     return this;

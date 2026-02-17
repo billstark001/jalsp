@@ -1,10 +1,5 @@
-// bnf.ts
-/**
- * BNF and EBNF parser
- */
-
-import { Token } from '../models/token';
-import { BnfElement, SimpleProduction } from '../models/grammar';
+import { Token } from '../lexer/types';
+import { BnfElement, SimpleProduction } from './types';
 import { BNF_SET, EBNF_SET, P_NON_COMMA, P_COMMA, P_SPACE } from './syntax';
 import { tokenize, mergeBnfElements } from './utils';
 
@@ -76,7 +71,9 @@ export function parseBnf(
         alt.map(term => mergeBnfElements(term.map(idx => tokens[shift + idx].value)))
       );
 
-      alternatives.forEach(expr => ret.push({ name, expr, action }));
+      for (const expr of alternatives) {
+        ret.push({ name, expr, action });
+      }
       pos = P_PROD.lastIndex;
     } else {
       throw new Error(

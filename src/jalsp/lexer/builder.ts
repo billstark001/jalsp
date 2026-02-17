@@ -1,6 +1,6 @@
-import { ActionRecord, TokenDefinition, TokenHandler, TokenNameSelector, TokenRecord } from "../models/token";
-import { getIncrementName } from "../utils/str";
-import Lexer from "./lexer";
+import { ActionRecord, TokenDefinition, TokenHandler, TokenNameSelector, TokenRecord } from "./types";
+import { getIncrementName } from "./utils";
+import { Lexer } from "./lexer";
 
 
 export class RegExpLexerBuilder {
@@ -37,7 +37,6 @@ export class RegExpLexerBuilder {
   }
 
   /**
-   * 
    * @param name The token name. 
    * @param pattern The matching pattern. 
    * - String inputs are treated as an exact match of that string.
