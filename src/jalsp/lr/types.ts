@@ -1,5 +1,5 @@
-import type { Production } from "../parser/instrument";
-import type { SimpleProduction, ProductionHandler } from "../ebnf/types";
+import type { Production } from "./utils-obj";
+import type { SimpleProduction, ProductionHandler } from "../bnf/types";
 
 
 export interface OperatorDefinition {
@@ -18,7 +18,7 @@ export interface ConflictPolicy {
 export interface GrammarDefinition {
   moduleName: string;
   actionMode?: 'function' | 'constructor';
-  mode?: 'LALR1' | 'SLR' | 'LR1';
+  mode?: 'lalr' | 'slr' | 'lr1';
 
   tokens: string[];
   productions: SimpleProduction[];
@@ -32,9 +32,10 @@ export interface GrammarDefinition {
   conflictPolicy?: ConflictPolicy;
 }
 
-export interface AutomatonActionRecord {
-  [0]: 'reduce' | 'accept' | 'shift' | 'error',
-  [1]: (number | string)[],
-}
+export type AutomatonActionRecord = 
+  | ['reduce', [number, number, number]]  // [headSymbol, bodyLength, productionIndex]
+  | ['accept', []]
+  | ['shift', [number]]  // [nextState]
+  | ['error', [string]];  // [errorMessage]
 
 

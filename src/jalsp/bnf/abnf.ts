@@ -2,14 +2,7 @@ import { Token } from '../lexer/types';
 import { BnfElement, SimpleProduction } from './types';
 import { ABNF_SET } from './syntax';
 import { tokenize } from './utils';
-
-function getPosString(token: Token<BnfElement>): string {
-  const { pos, position } = token;
-  if (pos) {
-    return `${pos.line}:${pos.col}`;
-  }
-  return position != null ? `:${position}` : '<unknown>';
-}
+import { getPosString } from '../lexer/utils';
 
 export function lexAbnf(grammar: string): Token<BnfElement>[] {
   return tokenize(grammar, ABNF_SET, ['T_COMMENT']);

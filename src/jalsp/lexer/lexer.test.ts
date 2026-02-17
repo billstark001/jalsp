@@ -1,9 +1,9 @@
-import { RegExpLexerBuilder } from './builder';
+import { LexerBuilder } from './builder';
 import { Lexer } from './lexer';
 
 describe('Lexer', () => {
 
-  const testLexer = new RegExpLexerBuilder()
+  const testLexer = new LexerBuilder()
     .t(() => undefined, / +/)
     .t((v, l) => 'T' + l, /[\+\-\*\/]/)
     .build('EOF');
@@ -22,7 +22,7 @@ describe('Lexer', () => {
     let lexer: Lexer;
 
     beforeEach(() => {
-      lexer = new RegExpLexerBuilder()
+      lexer = new LexerBuilder()
         .t('NUMBER', /\d+/, (lexeme) => parseInt(lexeme))
         .t('IDENTIFIER', /[a-zA-Z_]\w*/)
         .t('PLUS', '+')
@@ -97,7 +97,7 @@ describe('Lexer', () => {
 
   describe('Token Handlers', () => {
     it('should apply token handlers to transform values', () => {
-      const lexer = new RegExpLexerBuilder()
+      const lexer = new LexerBuilder()
         .t('HEX', /0x[0-9a-fA-F]+/, (lexeme) => parseInt(lexeme, 16))
         .t('FLOAT', /\d+\.\d+/, (lexeme) => parseFloat(lexeme))
         .t('UPPER', /[a-z]+/, (lexeme) => lexeme.toUpperCase())
@@ -114,7 +114,7 @@ describe('Lexer', () => {
     });
 
     it('should use lexeme as value when handler returns undefined', () => {
-      const lexer = new RegExpLexerBuilder()
+      const lexer = new LexerBuilder()
         .t('WORD', /\w+/, () => undefined)
         .build();
 
@@ -126,7 +126,7 @@ describe('Lexer', () => {
 
   describe('Token Name Selectors', () => {
     it('should discard tokens when name selector returns undefined', () => {
-      const lexer = new RegExpLexerBuilder()
+      const lexer = new LexerBuilder()
         .t('WORD', /\w+/)
         .t(() => undefined, /\s+/)  // whitespace
         .t(() => undefined, /\/\/.*/)  // comments
@@ -139,7 +139,7 @@ describe('Lexer', () => {
 
     it('should rename tokens based on value', () => {
       const keywords = new Set(['if', 'else', 'while', 'for']);
-      const lexer = new RegExpLexerBuilder()
+      const lexer = new LexerBuilder()
         .t((value) => keywords.has(value) ? 'KEYWORD' : 'IDENTIFIER', /[a-zA-Z_]\w*/)
         .t(() => undefined, /\s+/)
         .build();
@@ -156,7 +156,7 @@ describe('Lexer', () => {
 
   describe('Position Tracking', () => {
     it('should track token positions correctly', () => {
-      const lexer = new RegExpLexerBuilder()
+      const lexer = new LexerBuilder()
         .t('WORD', /\w+/)
         .t(() => undefined, /\s+/)
         .build();
@@ -177,7 +177,7 @@ describe('Lexer', () => {
     });
 
     it('should track line and column numbers in multiline input', () => {
-      const lexer = new RegExpLexerBuilder()
+      const lexer = new LexerBuilder()
         .t('WORD', /\w+/)
         .t(() => undefined, /\s+/)
         .build();
@@ -204,7 +204,7 @@ describe('Lexer', () => {
     });
 
     it('should report current position correctly', () => {
-      const lexer = new RegExpLexerBuilder()
+      const lexer = new LexerBuilder()
         .t('NUM', /\d+/)
         .t(() => undefined, / /)
         .build();
@@ -219,7 +219,7 @@ describe('Lexer', () => {
     });
 
     it('should report current file position correctly', () => {
-      const lexer = new RegExpLexerBuilder()
+      const lexer = new LexerBuilder()
         .t('WORD', /\w+/)
         .t(() => undefined, /\s+/)
         .build();
@@ -238,7 +238,7 @@ describe('Lexer', () => {
     let lexer: Lexer;
 
     beforeEach(() => {
-      lexer = new RegExpLexerBuilder()
+      lexer = new LexerBuilder()
         .t('CHAR', /[a-z]/)
         .build();
     });
@@ -272,7 +272,7 @@ describe('Lexer', () => {
 
   describe('Reset Operations', () => {
     it('should reset with new string', () => {
-      const lexer = new RegExpLexerBuilder()
+      const lexer = new LexerBuilder()
         .t('NUM', /\d+/)
         .build();
 
@@ -284,7 +284,7 @@ describe('Lexer', () => {
     });
 
     it('should reset position when reusing same string', () => {
-      const lexer = new RegExpLexerBuilder()
+      const lexer = new LexerBuilder()
         .t('NUM', /\d+/)
         .t(() => undefined, / /)
         .build();
@@ -301,7 +301,7 @@ describe('Lexer', () => {
 
   describe('Error Handling', () => {
     it('should throw error for unknown tokens', () => {
-      const lexer = new RegExpLexerBuilder()
+      const lexer = new LexerBuilder()
         .t('LETTER', /[a-z]/)
         .build();
 
@@ -312,7 +312,7 @@ describe('Lexer', () => {
     });
 
     it('should throw error when no input string is assigned', () => {
-      const lexer = new RegExpLexerBuilder()
+      const lexer = new LexerBuilder()
         .t('WORD', /\w+/)
         .build();
 
@@ -320,7 +320,7 @@ describe('Lexer', () => {
     });
 
     it('should throw error for zero-length tokens', () => {
-      const lexer = new RegExpLexerBuilder()
+      const lexer = new LexerBuilder()
         .t('EMPTY', /a*/)  // can match empty string
         .build();
 
@@ -329,7 +329,7 @@ describe('Lexer', () => {
     });
 
     it('should throw error for invalid pointer position', () => {
-      const lexer = new RegExpLexerBuilder()
+      const lexer = new LexerBuilder()
         .t('CHAR', /[a-z]/)
         .build();
 
@@ -342,7 +342,7 @@ describe('Lexer', () => {
 
   describe('EOF Handling', () => {
     it('should return EOF token at end of input', () => {
-      const lexer = new RegExpLexerBuilder()
+      const lexer = new LexerBuilder()
         .t('WORD', /\w+/)
         .build('EOF');
 
@@ -357,7 +357,7 @@ describe('Lexer', () => {
     });
 
     it('should use custom EOF token', () => {
-      const lexer = new RegExpLexerBuilder()
+      const lexer = new LexerBuilder()
         .t('NUM', /\d+/)
         .build('END_OF_INPUT');
 
@@ -370,7 +370,7 @@ describe('Lexer', () => {
     });
 
     it('should return multiple EOF tokens when called repeatedly at end', () => {
-      const lexer = new RegExpLexerBuilder()
+      const lexer = new LexerBuilder()
         .t('X', 'x')
         .build();
 
@@ -386,7 +386,7 @@ describe('Lexer', () => {
 
   describe('Advanced Pattern Matching', () => {
     it('should handle regex with capture groups', () => {
-      const lexer = new RegExpLexerBuilder()
+      const lexer = new LexerBuilder()
         .t('TAG', /<([a-z]+)>/, (lexeme, pos, arr) => arr ? arr[1] : lexeme)
         .build();
 
@@ -397,7 +397,7 @@ describe('Lexer', () => {
     });
 
     it('should prefer earlier rules when multiple patterns match', () => {
-      const lexer = new RegExpLexerBuilder()
+      const lexer = new LexerBuilder()
         .t('KEYWORD', 'if')
         .t('SPACE', / +/)
         .t('IDENTIFIER', /[a-z]+/)
@@ -418,7 +418,7 @@ describe('Lexer', () => {
 
   describe('Non-advancing Token Retrieval', () => {
     it('should peek at next token without advancing', () => {
-      const lexer = new RegExpLexerBuilder()
+      const lexer = new LexerBuilder()
         .t('CHAR', /[a-z]/)
         .build();
 
@@ -440,7 +440,7 @@ describe('Lexer', () => {
 
   describe('Complex Lexers', () => {
     it('should tokenize a simple programming language', () => {
-      const lexer = new RegExpLexerBuilder()
+      const lexer = new LexerBuilder()
         .t('NUMBER', /\d+/)
         .t('STRING', /"[^"]*"/, (lexeme) => lexeme.slice(1, -1))
         .t((value) => ['if', 'else', 'while', 'return'].includes(value) ? 'KEYWORD' : 'IDENTIFIER', /[a-zA-Z_]\w*/)

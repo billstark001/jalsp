@@ -1,8 +1,10 @@
-import { stringifyToken, Token, TokenStream } from "../models/token";
-import { AutomatonActionRecord, BnfElement, ProductionHandler } from "../models/grammar";
-import { GSymbol } from "./symbol";
+import { Token, TokenStream } from "../lexer/types";
+import { BnfElement, ProductionHandler } from "../bnf/types";
+import { AutomatonActionRecord } from "./types";
+import { GSymbol } from "./utils-obj";
 import { ParsedGrammar } from "./generator";
-import { ParserError } from "../models/error";
+import { ParserError } from "./error";
+import { getTokenString } from "../lexer/utils";
 
 export interface ParserStackItem {
   s: number,
@@ -10,6 +12,7 @@ export interface ParserStackItem {
 }
 
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function identity(...x: any[]) {
   return x;
 }
@@ -70,8 +73,8 @@ export default class Parser<T> {
 
   /*
   create(ctor, args) {
-    var args = [this.context].concat(args);
-    var factory = ctor.bind.apply(ctor, args);
+    const args = [this.context].concat(args);
+    const factory = ctor.bind.apply(ctor, args);
     return new factory();
   }
   */
@@ -96,17 +99,17 @@ export default class Parser<T> {
     this.accepted = false;
     this.inError = false;
 
-    var top: ParserStackItem | undefined = undefined;
+    let top: ParserStackItem | undefined = undefined;
 
     while (!this.accepted && !this.inError) {
       top = this.stack[this.stack.length - 1];
-      var s = top.s;
+      const s = top.s;
       //this.a = this.currentToken;
       if (stream.isEOF(this.a))
         this.an = 0;
       else
         this.an = this.symbolsTable[this.a.name];
-      var action = this.action[s][this.an];
+      const action = this.action[s][this.an];
 
       if (this.executeAction(action)) {
         // do nothing
@@ -132,13 +135,14 @@ export default class Parser<T> {
       return;
     }
 
-    var rhs = this.stack.splice(-length, length);
-    var t = this.stack[this.stack.length - 1];
-    var ns = this.goto[t.s][head];
-    var value;
+    const rhs = this.stack.splice(-length, length);
+    const t = this.stack[this.stack.length - 1];
+    const ns = this.goto[t.s][head];
+
+    let value;
     if (this.actions) {
-      var action = this.actions[prodIndex] ?? identity;
-      var values = rhs.map(function (si) {
+      const action = this.actions[prodIndex] ?? identity;
+      const values = rhs.map(function (si) {
         return si.i?.value;
       });
 
@@ -148,11 +152,12 @@ export default class Parser<T> {
     //If we are debugging
 
     if (this.symbols) {
-      var nt = { name: this.symbols[head].name, value: value };
+      const nt: Token<BnfElement> = { name: this.symbols[head].name, value: value, lexeme: '' };
       this.stack.push({ s: ns, i: nt });
     }
     else {
-      this.stack.push({ s: ns, i: { name: '', value: value } });
+      const nt: Token<BnfElement> = { name: '', value: value, lexeme: '' };
+      this.stack.push({ s: ns, i: nt });
     }
 
   }
@@ -170,11 +175,11 @@ export default class Parser<T> {
       throw new ParserError("No token stream is assigned as the parser's input.");
     }
     else if (this.stream.isEOF(token)) {
-      var { line, col } = this.stream.currentFilePosition();
+      const { line, col } = this.stream.currentFilePosition();
       throw new ParserError(`Unexpected EOF at (${line}:${col})`);
     } else {
-      var stop = this.stack == undefined ? undefined : this.stack[this.stack.length - 1].s;
-      throw new ParserError(`Unexpected token ${stringifyToken(token)} (Stack state: ${stop})`);
+      const stop = this.stack == undefined ? undefined : this.stack[this.stack.length - 1].s;
+      throw new ParserError(`Unexpected token ${getTokenString(token)} (Stack state: ${stop})`);
     }
 
   }

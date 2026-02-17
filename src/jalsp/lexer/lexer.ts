@@ -137,23 +137,23 @@ export class Lexer implements TokenStream {
 
         // if the token is 0-length
         if (advanced && this.pos == origPos) {
-          var p = this.currentFilePosition();
+          const p = this.currentFilePosition();
           throw new LexerError(`Zero-length token at position ${this.pos}/(${p.line}:${p.col})`);
         }
 
         if (lexeme != null) {
           const value = f(lexeme, lexemeIndex, arr) ?? lexeme;
           // determine name
-          var realName = name;
+          let realName = name;
           if (n !== undefined) {
-            var _realName = n(value, lexeme);
+            const _realName = n(value, lexeme);
             if (_realName === undefined) // discard the token
               return this.nextToken();
             else
               realName = _realName;
           }
           // form token
-          var ret: Token = {
+          const ret: Token = {
             name: realName,
             lexeme,
             value,
@@ -166,7 +166,7 @@ export class Lexer implements TokenStream {
 
       // no match
       // origPos should equate this.pos
-      var p = this.currentFilePosition();
+      const p = this.currentFilePosition();
       throw new LexerError(`Unknown token ${JSON.stringify(
         origPos + 10 < this.str.length ?
           this.str.substring(origPos, origPos + 10) + '...' :

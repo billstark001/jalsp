@@ -16,7 +16,7 @@ export interface SerializedLexerBuilder {
   contextMethods?: Record<string, SerializedFunction>;
 }
 
-export class RegExpLexerBuilder<T extends Record<string, TokenHandler> = Record<string, TokenHandler>> {
+export class LexerBuilder<T extends Record<string, TokenHandler> = Record<string, TokenHandler>> {
 
   protected actions: ActionRecord[];
   protected records: TokenRecord[];
@@ -36,8 +36,8 @@ export class RegExpLexerBuilder<T extends Record<string, TokenHandler> = Record<
   /**
    * Clone this builder, creating a new instance with copied state
    */
-  clone(): RegExpLexerBuilder<T> {
-    const cloned = new RegExpLexerBuilder<T>(this.context);
+  clone(): LexerBuilder<T> {
+    const cloned = new LexerBuilder<T>(this.context);
     cloned.actions = Array.from(this.actions).map(x => ({ ...x }));
     cloned.records = Array.from(this.records).map(x => ({ ...x }));
     cloned.usedTokens = new Set(this.usedTokens);
@@ -48,11 +48,11 @@ export class RegExpLexerBuilder<T extends Record<string, TokenHandler> = Record<
   /**
    * Add tokens from another builder or token definition
    */
-  addFrom(lexicon: TokenDefinition | RegExpLexerBuilder<Record<string, TokenHandler>>): this {
+  addFrom(lexicon: TokenDefinition | LexerBuilder<Record<string, TokenHandler>>): this {
     let actions: ActionRecord[];
     let records: TokenRecord[];
     
-    if (lexicon instanceof RegExpLexerBuilder) {
+    if (lexicon instanceof LexerBuilder) {
       actions = lexicon.actions;
       records = lexicon.records;
     } else {
@@ -111,8 +111,8 @@ export class RegExpLexerBuilder<T extends Record<string, TokenHandler> = Record<
   t(name: string | TokenNameSelector, pattern: string | RegExp, f?: TokenHandler | string) {
 
     // parse name
-    var realName: string;
-    var sel: TokenNameSelector | undefined = undefined;
+    let realName: string;
+    let sel: TokenNameSelector | undefined = undefined;
     if (typeof (name) == 'string')
       realName = name;
     else {
@@ -204,7 +204,7 @@ export class RegExpLexerBuilder<T extends Record<string, TokenHandler> = Record<
   static deserialize<T extends Record<string, TokenHandler> = Record<string, TokenHandler>>(
     serialized: SerializedLexerBuilder,
     options?: DeserializeOptions
-  ): RegExpLexerBuilder<T> {
+  ): LexerBuilder<T> {
     // Deserialize context if present
     let context: T | undefined;
     if (serialized.contextMethods) {
@@ -214,7 +214,7 @@ export class RegExpLexerBuilder<T extends Record<string, TokenHandler> = Record<
       }
     }
 
-    const builder = new RegExpLexerBuilder<T>(context);
+    const builder = new LexerBuilder<T>(context);
     builder.optionalToken = serialized.optionalToken;
     builder.records = serialized.records.map(r => ({ ...r }));
     builder.usedTokens = new Set(builder.records.map(x => x.name));

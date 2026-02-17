@@ -1,11 +1,11 @@
-import { RegExpLexerBuilder } from './builder';
+import { LexerBuilder } from './builder';
 import { TokenHandler } from './types';
 
 describe('RegExpLexerBuilder', () => {
   // Mode 1: Pure functions without context
   describe('Pure function mode', () => {
     it('should work with pure function handlers', () => {
-      const builder = new RegExpLexerBuilder();
+      const builder = new LexerBuilder();
       const handler: TokenHandler = (raw) => parseInt(raw, 10);
       
       builder.t('NUMBER', /[0-9]+/, handler);
@@ -16,7 +16,7 @@ describe('RegExpLexerBuilder', () => {
     });
 
     it('should throw error when using string method name without context', () => {
-      const builder = new RegExpLexerBuilder();
+      const builder = new LexerBuilder();
       
       expect(() => {
         builder.t('NUMBER', /[0-9]+/, 'parseNumber');
@@ -37,7 +37,7 @@ describe('RegExpLexerBuilder', () => {
         parseString: (raw) => raw.slice(1, -1), // Remove quotes
       };
 
-      const builder = new RegExpLexerBuilder(context);
+      const builder = new LexerBuilder(context);
       builder.t('NUMBER', /[0-9]+/, 'parseNumber');
       builder.t('STRING', /"[^"]*"/, 'parseString');
       
@@ -51,7 +51,7 @@ describe('RegExpLexerBuilder', () => {
         parseString: (raw) => raw.slice(1, -1),
       };
 
-      const builder = new RegExpLexerBuilder(context);
+      const builder = new LexerBuilder(context);
       builder.t('NUMBER', /[0-9]+/, (raw) => Number(raw));
       builder.t('STRING', /"[^"]*"/, 'parseString');
       
@@ -65,7 +65,7 @@ describe('RegExpLexerBuilder', () => {
         parseString: (raw) => raw.slice(1, -1),
       };
 
-      const builder = new RegExpLexerBuilder(context);
+      const builder = new LexerBuilder(context);
       
       expect(() => {
         builder.t('NUMBER', /[0-9]+/, 'nonExistentMethod' as string);
@@ -76,7 +76,7 @@ describe('RegExpLexerBuilder', () => {
   // Clone functionality
   describe('clone()', () => {
     it('should create an independent copy of the builder', () => {
-      const builder1 = new RegExpLexerBuilder();
+      const builder1 = new LexerBuilder();
       builder1.t('NUMBER', /[0-9]+/);
       
       const builder2 = builder1.clone();
@@ -93,10 +93,10 @@ describe('RegExpLexerBuilder', () => {
   // addFrom functionality
   describe('addFrom()', () => {
     it('should add tokens from another builder', () => {
-      const builder1 = new RegExpLexerBuilder();
+      const builder1 = new LexerBuilder();
       builder1.t('NUMBER', /[0-9]+/);
       
-      const builder2 = new RegExpLexerBuilder();
+      const builder2 = new LexerBuilder();
       builder2.t('STRING', /"[^"]*"/);
       builder2.addFrom(builder1);
       
@@ -107,11 +107,11 @@ describe('RegExpLexerBuilder', () => {
     });
 
     it('should add tokens from a TokenDefinition', () => {
-      const builder1 = new RegExpLexerBuilder();
+      const builder1 = new LexerBuilder();
       builder1.t('NUMBER', /[0-9]+/);
       const def1 = builder1.define();
       
-      const builder2 = new RegExpLexerBuilder();
+      const builder2 = new LexerBuilder();
       builder2.t('STRING', /"[^"]*"/);
       builder2.addFrom(def1);
       
@@ -123,7 +123,7 @@ describe('RegExpLexerBuilder', () => {
   // Serialization
   describe('serialize() and deserialize()', () => {
     it('should serialize and deserialize builder with pure functions', () => {
-      const builder = new RegExpLexerBuilder();
+      const builder = new LexerBuilder();
       builder.t('NUMBER', /[0-9]+/, (raw) => parseInt(raw, 10));
       builder.t('STRING', /"[^"]*"/, (raw) => raw.slice(1, -1));
       
@@ -132,7 +132,7 @@ describe('RegExpLexerBuilder', () => {
       expect(serialized).toHaveProperty('records');
       expect(serialized).toHaveProperty('optionalToken');
       
-      const deserialized = RegExpLexerBuilder.deserialize(serialized);
+      const deserialized = LexerBuilder.deserialize(serialized);
       const def1 = builder.define();
       const def2 = deserialized.define();
       
@@ -149,14 +149,14 @@ describe('RegExpLexerBuilder', () => {
         parseNumber: (raw) => parseInt(raw, 10),
       };
 
-      const builder = new RegExpLexerBuilder(context);
+      const builder = new LexerBuilder(context);
       builder.t('NUMBER', /[0-9]+/, 'parseNumber');
       
       const serialized = builder.serialize();
       expect(serialized).toHaveProperty('contextMethods');
       expect(serialized.contextMethods).toHaveProperty('parseNumber');
       
-      const deserialized = RegExpLexerBuilder.deserialize(serialized);
+      const deserialized = LexerBuilder.deserialize(serialized);
       const def1 = builder.define();
       const def2 = deserialized.define();
       
@@ -165,14 +165,14 @@ describe('RegExpLexerBuilder', () => {
     });
 
     it('should work with serialize options', () => {
-      const builder = new RegExpLexerBuilder();
+      const builder = new LexerBuilder();
       builder.t('NUMBER', /[0-9]+/, (raw) => parseInt(raw, 10));
       
       // Test with allowNonPure option
       const serialized = builder.serialize({ allowNonPure: true, allowAsync: false });
       expect(serialized).toBeDefined();
       
-      const deserialized = RegExpLexerBuilder.deserialize(serialized);
+      const deserialized = LexerBuilder.deserialize(serialized);
       expect(deserialized).toBeDefined();
     });
   });

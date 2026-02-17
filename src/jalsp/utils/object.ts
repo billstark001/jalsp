@@ -5,7 +5,7 @@ export function arrayEquals<T>(arr1?: T[], arr2?: T[]) {
     return false;
   if (arr1.length != arr2.length)
     return false;
-  var flag = true;
+  let flag = true;
   arr1.forEach((v, i) => flag = flag && (v == arr2[i]));
   return flag;
 }
@@ -17,7 +17,7 @@ export function arrayEqualsStrict<T>(arr1?: T[], arr2?: T[]) {
     return false;
   if (arr1.length !== arr2.length)
     return false;
-  var flag = true;
+  let flag = true;
   arr1.forEach((v, i) => flag = flag && (v === arr2[i]));
   return flag;
 }

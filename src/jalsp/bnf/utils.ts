@@ -62,7 +62,7 @@ export function tokenize(
 
       if (res !== null) {
         parsed = true;
-        
+
         if (skipKeys.includes(key)) {
           pos = dict[key].lastIndex;
           break;
@@ -75,7 +75,7 @@ export function tokenize(
     }
 
     if (!parsed) {
-      const snippet = grammar.substring(pos, Math.min(pos + 6, grammar.length)) + 
+      const snippet = grammar.substring(pos, Math.min(pos + 6, grammar.length)) +
         (pos + 6 < grammar.length ? '...' : '');
       throw new Error(`Unknown token ${JSON.stringify(snippet)} at position ${pos}`);
     }
@@ -95,8 +95,8 @@ export function mergeBnfElements(arr: BnfElement[]): BnfElement {
   });
 
   ret.value = ret.type === 'number' ? Number(values.join('')) :
-              ret.type === 'literal' ? values.join('') :
-              values.join(' ');
+    ret.type === 'literal' ? values.join('') :
+      values.join(' ');
 
   return ret;
 }

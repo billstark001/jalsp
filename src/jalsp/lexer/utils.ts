@@ -1,4 +1,4 @@
-import type { Position } from "./types";
+import type { Position, Token } from "./types";
 
 
 const incRegex = /_([0-9]+)$/;
@@ -8,8 +8,8 @@ const returnRegex = /\r?\n/g;
 export function getIncrementName(current: string): string {
   const matchRes = incRegex.exec(current);
   if (matchRes) {
-    var ind = matchRes.index || current.length - matchRes[0].length;
-    var num = matchRes[1];
+    const ind = matchRes.index || current.length - matchRes[0].length;
+    const num = matchRes[1];
     return current.substring(0, ind) + '_' + String(Number(num) + 1);
   } else {
     return current + '_0';
@@ -19,7 +19,7 @@ export function getIncrementName(current: string): string {
 export function getLinePositions(str: string): number[] {
   returnRegex.lastIndex = 0;
   const ret: number[] = [0];
-  var match: RegExpExecArray | null;
+  let match: RegExpExecArray | null;
   while ((match = returnRegex.exec(str)) != null) {
     ret.push(match.index + match[0].length);
   }
@@ -39,9 +39,9 @@ export function getLCIndex(record: string | number[], pos: number, lineOneBased?
     return { line: record.length - 1 + ob, col: pos - record[record.length - 1] + obc };
 
   // cond: record[i] > pos
-  var lb = 0; // the largest index that doesn't satisfy
-  var rb = record.length; // the smallest index that satisfies
-  var mb: number;
+  let lb = 0; // the largest index that doesn't satisfy
+  let rb = record.length; // the smallest index that satisfies
+  let mb: number;
   while (rb - lb > 1) {
     mb = Math.floor((rb + lb) / 2);
     if (record[mb] > pos)
@@ -56,3 +56,20 @@ export function getLCIndex(record: string | number[], pos: number, lineOneBased?
   };
 }
 
+
+
+export function getPosString<T>(token: Token<T>): string {
+  const { pos, position } = token;
+  if (pos) {
+    return `${pos.line}:${pos.col}`;
+  }
+  return position != null ? `:${position}` : '<no position>';
+}
+
+export function getTokenString<T>(token: Token<T>): string {
+  const { name, lexeme } = token;
+  if (name.startsWith('T_')) {
+    return JSON.stringify(lexeme);
+  }
+  return `[${getPosString(token)}] <${name}:${lexeme}>`;
+}

@@ -31,7 +31,7 @@ Array.prototype.flatMap = function <T, V>(
 }
 
 Array.prototype.aggregate = function <T, V>(this: Array<T>, agg: (acc: V, x: T) => V, initial: V) {
-  var acc = initial;
+  let acc = initial;
   this.forEach(function (x) {
     acc = agg(acc, x);
   });
@@ -57,7 +57,7 @@ Set.prototype.flatMap = function <T, V>(
   this: Set<T>,
   callbackfn: (value: T, index: number, array: T[]) => V[],
   thisArg?: any): Set<V> {
-  var arrayRet = Array.from(this).map(callbackfn).reduce<V[]>((x, y) => x.concat(y), []);
+  const arrayRet = Array.from(this).map(callbackfn).reduce<V[]>((x, y) => x.concat(y), []);
   return new Set(arrayRet);
 }
 
