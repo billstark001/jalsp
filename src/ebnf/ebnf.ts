@@ -125,7 +125,7 @@ function convertSingle(prod: ComplexProduction, getName: (init: string) => strin
 }
 
 // general
-export function convertToBnf(unparsed: ComplexProduction[], actionOverride?: number) {
+export function convertEbnfToBnf(unparsed: ComplexProduction[], actionOverride?: number) {
   const nonTerminals: Set<string> = new Set();
   const terminals: Set<string> = new Set();
 

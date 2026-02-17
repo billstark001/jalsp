@@ -4,11 +4,11 @@
  * if undefined is returned, the token is ignored
  */
 export type TokenNameSelector = (value: any | undefined, lexeme: string) => string | undefined;
-export type TokenHandler = (
+export type TokenHandler<T> = (
   raw: string,
   index: number,
   arr?: RegExpExecArray,
-) => (any | undefined);
+) => T;
 
 
 export interface Position {
@@ -16,7 +16,7 @@ export interface Position {
   col: number,
 }
 
-export interface Token<T = string> {
+export interface Token<T> {
   name: string,
 
   lexeme: string,
@@ -26,7 +26,7 @@ export interface Token<T = string> {
   pos?: Position,
 }
 
-export interface TokenStream<T = string> {
+export interface TokenStream<T> {
   nextToken(): Token<T>,
   isEOF(t: Token<T>): boolean,
   currentPosition(): number,
@@ -41,16 +41,20 @@ export interface TokenRecord {
   handlerIndex: number;
 }
 
-export interface ActionRecord {
-  handler?: TokenHandler;
+export interface ActionRecord<T> {
+  handler?: TokenHandler<T>;
   nameSelector?: TokenNameSelector;
 }
 
-
-export interface TokenDefinition {
-  actions: ActionRecord[];
+export interface LexerOptionsFull<T> {
+  actions: ActionRecord<T>[];
   records: TokenRecord[];
-  eofToken?: string;
+  eofName?: string;
+  eofValue: T;
+  dummyHandler: TokenHandler<T>;
 }
+
+type _Keys = 'eofValue' | 'dummyHandler';
+export type LexerOptions<T> = Omit<LexerOptionsFull<T>, _Keys> & Partial<Pick<LexerOptionsFull<T>, _Keys>>;
 
 export type LexerPositionOptions = 'begin' | 'end' | 'current';

@@ -1,6 +1,6 @@
 import { lexBnf, parseBnf } from "../bnf/bnf";
 import { lexAbnf, parseAbnf } from "../bnf/abnf";
-import { convertToBnf } from "../ebnf/ebnf";
+import { convertEbnfToBnf } from "../ebnf/ebnf";
 import { ParserError } from "./error";
 import { BnfElement, ComplexProduction, EbnfElement, ProductionHandler, SimpleProduction } from "../bnf/types";
 import { GrammarDefinition, OperatorDefinition } from "./types";
@@ -188,7 +188,7 @@ export class LRGrammarBuilder {
       prods = [prods as ComplexProduction];
 
     const handlerIndex = this.act(handler);
-    const simpleProds = convertToBnf(prods, handlerIndex);
+    const simpleProds = convertEbnfToBnf(prods, handlerIndex);
     this.bnfInner(simpleProds);
 
     return this;

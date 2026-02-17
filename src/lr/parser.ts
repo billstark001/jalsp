@@ -18,7 +18,7 @@ function identity(...x: any[]) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export class Parser<TToken = string, TContext = any, TResult = TToken> {
+export class Parser<TToken = string | undefined, TContext = any, TResult = TToken> {
 
   // defs
   action: { [id: number]: AutomatonActionRecord[] } = {};

@@ -1,4 +1,4 @@
-import { ActionRecord, TokenDefinition, TokenHandler, TokenNameSelector, TokenRecord } from "./types";
+import { ActionRecord, LexerOptions, LexerOptionsFull, TokenHandler, TokenNameSelector, TokenRecord } from "./types";
 import { getIncrementName } from "./utils";
 import { Lexer } from "./lexer";
 import { serializeFunction, deserializeFunction, SerializeOptions, DeserializeOptions, SerializedFunction } from "../utils/serializer";
@@ -16,16 +16,16 @@ export interface SerializedLexerBuilder {
   contextMethods?: Record<string, SerializedFunction>;
 }
 
-export class LexerBuilder<T extends Record<string, TokenHandler> = Record<string, TokenHandler>> {
+export class LexerBuilder<TValue, TAction extends Record<string, TokenHandler<TValue>> = Record<string, TokenHandler<TValue>>> {
 
-  protected actions: ActionRecord[];
+  protected actions: ActionRecord<TValue>[];
   protected records: TokenRecord[];
   protected usedTokens: Set<string>;
 
   protected optionalToken = '';
-  protected context?: T;
+  protected context?: TAction;
 
-  constructor(context?: T) {
+  constructor(context?: TAction) {
     this.actions = [];
     this.records = [];
     this.usedTokens = new Set();
@@ -36,8 +36,8 @@ export class LexerBuilder<T extends Record<string, TokenHandler> = Record<string
   /**
    * Clone this builder, creating a new instance with copied state
    */
-  clone(): LexerBuilder<T> {
-    const cloned = new LexerBuilder<T>(this.context);
+  clone(): LexerBuilder<TValue, TAction> {
+    const cloned = new LexerBuilder<TValue, TAction>(this.context);
     cloned.actions = Array.from(this.actions).map(x => ({ ...x }));
     cloned.records = Array.from(this.records).map(x => ({ ...x }));
     cloned.usedTokens = new Set(this.usedTokens);
@@ -48,10 +48,10 @@ export class LexerBuilder<T extends Record<string, TokenHandler> = Record<string
   /**
    * Add tokens from another builder or token definition
    */
-  addFrom(lexicon: TokenDefinition | LexerBuilder<Record<string, TokenHandler>>): this {
-    let actions: ActionRecord[];
+  addFrom(lexicon: LexerOptions<TValue> | LexerBuilder<TValue, TAction>): this {
+    let actions: ActionRecord<TValue>[];
     let records: TokenRecord[];
-    
+
     if (lexicon instanceof LexerBuilder) {
       actions = lexicon.actions;
       records = lexicon.records;
@@ -63,7 +63,7 @@ export class LexerBuilder<T extends Record<string, TokenHandler> = Record<string
     // Add actions and update handler indices in records
     const indexOffset = this.actions.length;
     this.actions.push(...actions.map(x => ({ ...x })));
-    
+
     // Add records with adjusted handler indices
     for (const record of records) {
       const newRecord = { ...record };
@@ -77,9 +77,9 @@ export class LexerBuilder<T extends Record<string, TokenHandler> = Record<string
     return this;
   }
 
-  protected registerAction(h?: TokenHandler | string, n?: TokenNameSelector) {
-    let handler: TokenHandler | undefined;
-    
+  protected registerAction(h?: TokenHandler<TValue> | string, n?: TokenNameSelector) {
+    let handler: TokenHandler<TValue> | undefined;
+
     if (typeof h === 'string') {
       // String method name
       if (!this.context) {
@@ -96,7 +96,7 @@ export class LexerBuilder<T extends Record<string, TokenHandler> = Record<string
     } else {
       handler = h;
     }
-    
+
     return this.actions.push({ handler, nameSelector: n }) - 1;
   }
 
@@ -108,7 +108,7 @@ export class LexerBuilder<T extends Record<string, TokenHandler> = Record<string
    * with global flag moved and sticky flag appended.
    * @param f The handler - can be a pure function or a string method name (if context object provided).
    */
-  t(name: string | TokenNameSelector, pattern: string | RegExp, f?: TokenHandler | string) {
+  t(name: string | TokenNameSelector, pattern: string | RegExp, f?: TokenHandler<TValue> | string) {
 
     // parse name
     let realName: string;
@@ -155,16 +155,22 @@ export class LexerBuilder<T extends Record<string, TokenHandler> = Record<string
     return this;
   }
 
-  define(eof?: string): TokenDefinition {
+  define(eofName: string | undefined, eofValue: TValue): LexerOptionsFull<TValue>;
+  define(eofName?: string): LexerOptions<TValue | undefined>;
+  define(eofName?: string, eofValue?: TValue): LexerOptions<TValue | undefined> {
     return {
       actions: this.actions,
       records: this.records,
-      eofToken: eof
+      eofName: eofName,
+      eofValue: eofValue
     }
   }
 
-  build(eof?: string): Lexer {
-    return new Lexer(this.define(eof));
+  build(eofName: string | undefined, eofValue: TValue): Lexer<TValue>;
+  build(eofName?: string): Lexer<TValue | undefined>;
+  build(eofName?: string, eofValue?: TValue): Lexer<TValue | undefined> {
+    const options: LexerOptionsFull<TValue> = this.define(eofName, eofValue as TValue);
+    return new Lexer<TValue | undefined>(options);
   }
 
   /**
@@ -201,27 +207,27 @@ export class LexerBuilder<T extends Record<string, TokenHandler> = Record<string
   /**
    * Deserialize a builder from a serialized object
    */
-  static deserialize<T extends Record<string, TokenHandler> = Record<string, TokenHandler>>(
+  static deserialize<TValue, TAction extends Record<string, TokenHandler<TValue>> = Record<string, TokenHandler<TValue>>>(
     serialized: SerializedLexerBuilder,
     options?: DeserializeOptions
-  ): LexerBuilder<T> {
+  ): LexerBuilder<TValue, TAction> {
     // Deserialize context if present
-    let context: T | undefined;
+    let context: TAction | undefined;
     if (serialized.contextMethods) {
-      context = {} as T;
+      context = {} as TAction;
       for (const [key, serializedFn] of Object.entries(serialized.contextMethods)) {
-        (context as Record<string, TokenHandler>)[key] = deserializeFunction(serializedFn, options) as TokenHandler;
+        (context as Record<string, TokenHandler<TValue>>)[key] = deserializeFunction(serializedFn, options) as TokenHandler<TValue>;
       }
     }
 
-    const builder = new LexerBuilder<T>(context);
+    const builder = new LexerBuilder<TValue, TAction>(context);
     builder.optionalToken = serialized.optionalToken;
     builder.records = serialized.records.map(r => ({ ...r }));
     builder.usedTokens = new Set(builder.records.map(x => x.name));
 
     // Deserialize actions
     builder.actions = serialized.actions.map(action => ({
-      handler: action.handler ? deserializeFunction(action.handler, options) as TokenHandler : undefined,
+      handler: action.handler ? deserializeFunction(action.handler, options) as TokenHandler<TValue> : undefined,
       nameSelector: action.nameSelector ? deserializeFunction(action.nameSelector, options) as TokenNameSelector : undefined,
     }));
 

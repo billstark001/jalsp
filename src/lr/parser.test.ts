@@ -6,7 +6,7 @@ describe('Parser', () => {
 
   describe('Arithmetic Expression Parser', () => {
     // Build lexer for arithmetic expressions
-    const lexerBuilder = new LexerBuilder();
+    const lexerBuilder = new LexerBuilder<string | number>();
     lexerBuilder.t('num', /[0-9]+/, (raw) => parseInt(raw, 10));
     lexerBuilder.t('plus', /\+/);
     lexerBuilder.t('minus', /-/);
@@ -40,7 +40,7 @@ describe('Parser', () => {
     grammarBuilder.opr('left', 'times', 'divide');
 
     const parsedGrammar = grammarBuilder.build({ startSymbol: 'E', eofToken: 'eof' });
-    const parser = new Parser(parsedGrammar);
+    const parser = new Parser<string | number | undefined>(parsedGrammar);
 
     const parse = (input: string) => {
       const stream = lexer.reset(input);
@@ -92,7 +92,7 @@ describe('Parser', () => {
 
   describe('Simple Parentheses Parser', () => {
     // Build lexer
-    const lexerBuilder = new LexerBuilder();
+    const lexerBuilder = new LexerBuilder<string>();
     lexerBuilder.t('a', /a/);
     lexerBuilder.t('lparen', /\(/);
     lexerBuilder.t('rparen', /\)/);
@@ -140,7 +140,7 @@ describe('Parser', () => {
 
   describe('List Parser', () => {
     // Build lexer for list syntax
-    const lexerBuilder = new LexerBuilder();
+    const lexerBuilder = new LexerBuilder<string | number>();
     lexerBuilder.t('num', /[0-9]+/, (raw) => parseInt(raw, 10));
     lexerBuilder.t('comma', /,/);
     lexerBuilder.t('lbracket', /\[/);
@@ -161,7 +161,7 @@ describe('Parser', () => {
     grammarBuilder.bnf('E = num', (n: number) => [n]);
 
     const parsedGrammar = grammarBuilder.build({ startSymbol: 'L', eofToken: 'eof' });
-    const parser = new Parser(parsedGrammar);
+    const parser = new Parser<string | number | undefined>(parsedGrammar);
 
     const parse = (input: string) => {
       const stream = lexer.reset(input);
@@ -201,7 +201,7 @@ describe('Parser', () => {
     }
 
     // Build lexer
-    const lexerBuilder = new LexerBuilder();
+    const lexerBuilder = new LexerBuilder<string | number>();
     lexerBuilder.t('id', /[a-zA-Z_][a-zA-Z0-9_]*/, (raw) => raw);
     lexerBuilder.t('num', /[0-9]+/, (raw) => parseInt(raw, 10));
     lexerBuilder.t('eq', /=/);
@@ -220,7 +220,7 @@ describe('Parser', () => {
     }));
 
     const parsedGrammar = grammarBuilder.build({ startSymbol: 'S', eofToken: 'eof' });
-    const parser = new Parser<string, Assignment>(parsedGrammar);
+    const parser = new Parser<string | number | undefined, Assignment>(parsedGrammar);
 
     const parse = (input: string) => {
       const stream = lexer.reset(input);
@@ -250,7 +250,7 @@ describe('Parser', () => {
 
   describe('Boolean Expression Parser', () => {
     // Build lexer
-    const lexerBuilder = new LexerBuilder();
+    const lexerBuilder = new LexerBuilder<boolean>();
     lexerBuilder.t('true', /true/, () => true);
     lexerBuilder.t('false', /false/, () => false);
     lexerBuilder.t('and', /&&/);
@@ -284,7 +284,7 @@ describe('Parser', () => {
     grammarBuilder.opr('right', 'not');
 
     const parsedGrammar = grammarBuilder.build({ startSymbol: 'E', eofToken: 'eof' });
-    const parser = new Parser<string>(parsedGrammar);
+    const parser = new Parser<boolean | undefined>(parsedGrammar);
 
 
     const parse = (input: string) => {
@@ -349,7 +349,7 @@ describe('Parser', () => {
 
   describe('Error Handling', () => {
     // Build simple lexer
-    const lexerBuilder = new LexerBuilder();
+    const lexerBuilder = new LexerBuilder<string | number>();
     lexerBuilder.t('num', /[0-9]+/, (raw) => parseInt(raw, 10));
     lexerBuilder.t('plus', /\+/);
     lexerBuilder.t(() => undefined, /\s+/);
@@ -365,7 +365,7 @@ describe('Parser', () => {
     grammarBuilder.opr('left', 'plus');
 
     const parsedGrammar = grammarBuilder.build({ startSymbol: 'E', eofToken: 'eof' });
-    const parser = new Parser(parsedGrammar);
+    const parser = new Parser<string | number | undefined>(parsedGrammar);
 
 
     const parse = (input: string) => {

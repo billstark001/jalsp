@@ -1,17 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   Position,
-  Token, TokenDefinition, TokenHandler, TokenNameSelector, TokenStream,
+  Token, LexerOptions, TokenHandler, TokenNameSelector, TokenStream,
   LexerPositionOptions,
+  LexerOptionsFull,
 } from "./types";
 import { getLCIndex, getLinePositions } from "./utils";
 
-const dummyHandler: TokenHandler = () => { }
-
-interface LexerRecord {
+interface LexerRecord<T> {
   name: string;
   pat: RegExp | string;
-  f: TokenHandler;
+  f: TokenHandler<T>;
   n?: TokenNameSelector;
 }
 
@@ -28,22 +27,31 @@ export class LexerError extends Error {
 
 export const DEFAULT_EOF_TOKEN = '<<EOF>>';
 
-export class Lexer implements TokenStream<string> {
+export class Lexer<T> implements TokenStream<T> {
 
   static readonly DEFAULT_EOF_TOKEN = DEFAULT_EOF_TOKEN;
 
   str?: string;
   rec?: number[];
   pos: number;
-  eof: string;
+  eofName: string;
+  eofValue?: T;
+  dummyHandler: TokenHandler<T>;
 
-  readonly records: LexerRecord[];
+  readonly records: LexerRecord<T>[];
 
-  constructor({ actions, records, eofToken }: TokenDefinition) {
-    this.records = [];
+  constructor(options: LexerOptionsFull<T>);
+  constructor(options: LexerOptions<string | undefined>);
+
+  constructor(options: LexerOptions<T>) {
     this.str = undefined;
     this.pos = 0;
-    this.eof = eofToken || Lexer.DEFAULT_EOF_TOKEN;
+
+    const { actions, records, eofName, eofValue, dummyHandler } = options;
+    this.records = [];
+    this.eofName = eofName || Lexer.DEFAULT_EOF_TOKEN;
+    this.eofValue = eofValue;
+    this.dummyHandler = dummyHandler ?? ((() => { }) as unknown as TokenHandler<T>);
 
     for (const rec of records) {
       const { name, pattern, isRegExp, flags, handlerIndex } = rec;
@@ -58,7 +66,7 @@ export class Lexer implements TokenStream<string> {
       this.records.push({
         name,
         pat,
-        f: actions[handlerIndex].handler ?? dummyHandler,
+        f: actions[handlerIndex].handler ?? this.dummyHandler,
         n: actions[handlerIndex].nameSelector
       });
     }
@@ -82,7 +90,7 @@ export class Lexer implements TokenStream<string> {
     return this;
   }
 
-  nextToken(advance = true): Token {
+  nextToken(advance = true): Token<T> {
     if (this.str == undefined)
       throw new LexerError("No input string assigned.");
 
@@ -94,9 +102,9 @@ export class Lexer implements TokenStream<string> {
     else if (origPos >= this.str.length) {
       // EOF reached
       return {
-        name: this.eof,
-        value: this.eof,
-        lexeme: this.eof,
+        name: this.eofName,
+        value: this.eofValue ?? (this.eofName as unknown as T),
+        lexeme: this.eofName,
         position: origPos,
         pos: this.currentFilePosition()
       }
@@ -153,10 +161,10 @@ export class Lexer implements TokenStream<string> {
               realName = _realName;
           }
           // form token
-          const ret: Token = {
+          const ret: Token<T> = {
             name: realName,
             lexeme,
-            value,
+            value: value as T,
             position: lexemeIndex,
             pos: getLCIndex(this.rec, lexemeIndex, true)
           }
@@ -175,9 +183,9 @@ export class Lexer implements TokenStream<string> {
     }
   }
 
-  nextTokens(step: number): Token[] {
+  nextTokens(step: number): Token<T>[] {
     if (step < 1) throw new Error(`Invalid step: ${step}`);
-    const ret: Token[] = [];
+    const ret: Token<T>[] = [];
     for (let i = 0; i < step; i++) {
       const t = this.nextToken(true);
       ret.push(t);
@@ -185,8 +193,8 @@ export class Lexer implements TokenStream<string> {
     return ret;
   }
 
-  isEOF(t: Token): boolean {
-    return t.name == this.eof;
+  isEOF(t: Token<T>): boolean {
+    return t.name == this.eofName;
   }
   currentPosition(): number {
     return this.pos;

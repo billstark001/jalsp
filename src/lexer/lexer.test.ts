@@ -19,10 +19,10 @@ describe('Lexer', () => {
   });
 
   describe('Basic Tokenization', () => {
-    let lexer: Lexer;
+    let lexer: Lexer<string | number | undefined>;
 
     beforeEach(() => {
-      lexer = new LexerBuilder()
+      lexer = new LexerBuilder<string | number>()
         .t('NUMBER', /\d+/, (lexeme) => parseInt(lexeme))
         .t('IDENTIFIER', /[a-zA-Z_]\w*/)
         .t('PLUS', '+')
@@ -235,10 +235,10 @@ describe('Lexer', () => {
   });
 
   describe('Seek Operations', () => {
-    let lexer: Lexer;
+    let lexer: Lexer<string | undefined>;
 
     beforeEach(() => {
-      lexer = new LexerBuilder()
+      lexer = new LexerBuilder<string>()
         .t('CHAR', /[a-z]/)
         .build();
     });

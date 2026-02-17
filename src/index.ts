@@ -1,13 +1,14 @@
 import { lexBnf, parseBnf } from './bnf/bnf';
 import { lexAbnf, parseAbnf } from './bnf/abnf';
 import { parseEbnf } from './ebnf/ebnf-parser';
+
 import { LexerBuilder } from './lexer/builder';
 import { LRGrammarBuilder } from './lr/builder';
 import { Lexer } from './lexer/lexer';
 import { Parser } from './lr/parser';
-
 import { LRGenerator } from './lr/generator';
-import { convertToBnf } from './ebnf/ebnf';
+
+import { convertEbnfToBnf } from './ebnf/ebnf';
 import { compileActionRecord } from './lr/utils';
 
 export {
@@ -22,7 +23,7 @@ export {
   lexAbnf,
   parseAbnf,
   parseEbnf,
-  convertToBnf,
+  convertEbnfToBnf,
   compileActionRecord,
 };
 
