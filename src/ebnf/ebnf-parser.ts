@@ -10,14 +10,21 @@ const ebnf = new LRGrammarBuilder()
   // .bnf('combine = ', (x) => x?.length)
 
   .bnf('ident = IDENTIFIER | STRING1 | STRING2', (x) => x ?? '[E]')
-  .bnf('number = NON_NEG_INTEGER', (x) => x ?? 0)
+  .bnf('number = NON_NEG_INTEGER', (x: BnfElement) => {
+    if (x && typeof x === 'object' && 'value' in x) {
+      return Number(x.value) ?? 0;
+    }
+    return x ?? 0;
+  })
   .bnf('elem = ident', (x) => x)
   .bnf('group = elem', (x) => [x])
   .bnf('group = elem group', (x, y) => [x].concat(y))
   .bnf('elem = RB_L groups RB_R | SB_L groups SB_R | CB_L groups CB_R', (l, m) => {
+    // Extract the actual bracket value from BnfElement
+    const leftBracket = (l && typeof l === 'object' && 'value' in l) ? l.value : l;
     const ret: EbnfElement = {
       isEbnf: true,
-      type: l == '(' ? 'group' : (l == '[' ? 'optional' : 'repeat'),
+      type: leftBracket == '(' ? 'group' : (leftBracket == '[' ? 'optional' : 'repeat'),
       productionList: m
     };
     return ret;
@@ -51,12 +58,28 @@ const ebnf = new LRGrammarBuilder()
       return [a];
   })
   .bnf('prod = ident DEFINITION groups', (i, _, g: ComplexExpression[]): ComplexProduction[] => {
+    // Extract the actual string name from the BnfElement
+    let name: string;
+    if (i && typeof i === 'object' && 'value' in i) {
+      name = i.value as string;
+    } else {
+      name = i || '[E]';
+    }
     return g.map<ComplexProduction>(h => ({
-      name: i,
+      name: name,
       expr: h,
     }));
   })
-  .bnf('prod = ident DEFINITION', (i, _): Array<ComplexProduction> => [{ name: i, expr: [] }])
+  .bnf('prod = ident DEFINITION', (i, _): Array<ComplexProduction> => {
+    // Extract the actual string name from the BnfElement
+    let name: string;
+    if (i && typeof i === 'object' && 'value' in i) {
+      name = i.value as string;
+    } else {
+      name = i || '[E]';
+    }
+    return [{ name: name, expr: [] }];
+  })
 
   .bnf('prods = ', () => [])
   .bnf('prods = prod', (p) => p)
