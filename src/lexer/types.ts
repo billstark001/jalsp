@@ -1,9 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 /**
  * if undefined is returned, the token is ignored
  */
-export type TokenNameSelector = (value: any | undefined, lexeme: string) => string | undefined;
+export type TokenNameSelector<T> = (value: T, lexeme: string) => string | undefined;
 export type TokenHandler<T> = (
   raw: string,
   index: number,
@@ -43,18 +41,15 @@ export interface TokenRecord {
 
 export interface ActionRecord<T> {
   handler?: TokenHandler<T>;
-  nameSelector?: TokenNameSelector;
+  nameSelector?: TokenNameSelector<T>;
 }
 
-export interface LexerOptionsFull<T> {
+export interface LexerOptions<T> {
   actions: ActionRecord<T>[];
   records: TokenRecord[];
   eofName?: string;
   eofValue: T;
   dummyHandler: TokenHandler<T>;
 }
-
-type _Keys = 'eofValue' | 'dummyHandler';
-export type LexerOptions<T> = Omit<LexerOptionsFull<T>, _Keys> & Partial<Pick<LexerOptionsFull<T>, _Keys>>;
 
 export type LexerPositionOptions = 'begin' | 'end' | 'current';

@@ -5,18 +5,18 @@ describe('RegExpLexerBuilder', () => {
   // Mode 1: Pure functions without context
   describe('Pure function mode', () => {
     it('should work with pure function handlers', () => {
-      const builder = new LexerBuilder();
+      const builder = new LexerBuilder<number | undefined>();
       const handler: TokenHandler<number> = (raw) => parseInt(raw, 10);
 
       builder.t('NUMBER', /[0-9]+/, handler);
-      builder.t('WHITESPACE', /\s+/);
+      builder.t('WHITESPACE', /\s+/, () => undefined);
 
-      const lexer = builder.build('EOF');
+      const lexer = builder.build({ eofName: 'EOF', eofValue: undefined });
       expect(lexer).toBeDefined();
     });
 
     it('should throw error when using string method name without context', () => {
-      const builder = new LexerBuilder();
+      const builder = new LexerBuilder<number>();
 
       expect(() => {
         builder.t('NUMBER', /[0-9]+/, 'parseNumber');
@@ -42,7 +42,7 @@ describe('RegExpLexerBuilder', () => {
       builder.t('NUMBER', /[0-9]+/, 'parseNumber');
       builder.t('STRING', /"[^"]*"/, 'parseString');
 
-      const lexer = builder.build('EOF');
+      const lexer = builder.build({ eofName: 'EOF', eofValue: undefined });
       expect(lexer).toBeDefined();
     });
 
@@ -52,11 +52,11 @@ describe('RegExpLexerBuilder', () => {
         parseString: (raw) => raw.slice(1, -1),
       };
 
-      const builder = new LexerBuilder(context);
+      const builder = new LexerBuilder<number | string | undefined>(context);
       builder.t('NUMBER', /[0-9]+/, (raw) => Number(raw));
       builder.t('STRING', /"[^"]*"/, 'parseString');
 
-      const lexer = builder.build('EOF');
+      const lexer = builder.build({ eofName: 'EOF', eofValue: undefined });
       expect(lexer).toBeDefined();
     });
 
@@ -124,7 +124,7 @@ describe('RegExpLexerBuilder', () => {
   // Serialization
   describe('serialize() and deserialize()', () => {
     it('should serialize and deserialize builder with pure functions', () => {
-      const builder = new LexerBuilder();
+      const builder = new LexerBuilder<number | string | undefined>();
       builder.t('NUMBER', /[0-9]+/, (raw) => parseInt(raw, 10));
       builder.t('STRING', /"[^"]*"/, (raw) => raw.slice(1, -1));
 
@@ -151,7 +151,7 @@ describe('RegExpLexerBuilder', () => {
         parseNumber: (raw) => parseInt(raw, 10),
       };
 
-      const builder = new LexerBuilder(context);
+      const builder = new LexerBuilder<number | string | undefined>(context);
       builder.t('NUMBER', /[0-9]+/, 'parseNumber');
 
       const serialized = builder.serialize();
@@ -167,7 +167,7 @@ describe('RegExpLexerBuilder', () => {
     });
 
     it('should work with serialize options', () => {
-      const builder = new LexerBuilder();
+      const builder = new LexerBuilder<number | string | undefined>();
       builder.t('NUMBER', /[0-9]+/, (raw) => parseInt(raw, 10));
 
       // Test with allowNonPure option

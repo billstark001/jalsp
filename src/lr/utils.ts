@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { GSymbol, isNonTerminal, isTerminal, eps, Production, GItem, LR1Item } from "./utils-obj";
-import { OperatorDefinition, AutomatonActionRecord } from "./types";
+import { OperatorDefinition, AutomatonActionRecord, ProductionHandler } from "./types";
 import { IEquatable } from "../utils/typing";
-import { ProductionHandler, ProductionHandlerModifier } from "../bnf/types";
+import { ProductionHandlerModifier } from "../bnf/types";
 
 export const EOF_INDEX = 0;
 

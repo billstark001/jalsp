@@ -4,10 +4,10 @@ Possible acronym for: **J**ust **A**nother **L**exical and **S**yntactic **P**ar
 
 JALSP is a (partial) refactoring of [JACOB](https://github.com/Canna71/Jacob), a Bison-like JS Compiler generator. It provides native Regex-based lexer and JACOB-identical parser implementations with usage inspired by [PLY](https://www.dabeaz.com/ply/). This can be used for example to create a DSL (domain specific language) to be used in a JavaScript runtime.
 
-Generating a language parser involves two steps: 
+Generating a language parser involves two steps:
+
  1. Aggregating the input characters into a series of *tokens*. This is done by the module *lexer*.
  2. Interpreting the series of tokens as a *language*, according to a set of *grammar* or *syntax*. This is done by the module *parser*.
-
 
 Given appropriate instructions, Jalsp will generate both the lexer and the parser. We'll see how to specify the actual behaviors of your parser.
 
@@ -67,6 +67,7 @@ EBNF is more handier than BNF because it also adds shortcuts to define repetitio
 `[ ... ]` means 0 or 1 (...)
 
 `( ... )` will group the content into one group. This is useful to inline some rules that don't need a special action for themselves, for example:
+
 ```
 Assignment = Identifier ':=' ( 'integer' | Identifier | 'string' );
 ```

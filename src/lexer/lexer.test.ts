@@ -1,12 +1,16 @@
-import { LexerBuilder } from './builder';
+import { LexerBuilder, LexerBuilderDefineOptions } from './builder';
 import { Lexer } from './lexer';
 
 describe('Lexer', () => {
 
-  const testLexer = new LexerBuilder()
-    .t(() => undefined, / +/)
+  const eofOptions = {
+    eofName: 'EOF',
+  }
+
+  const testLexer = new LexerBuilder<string | undefined>()
+    .t(null, / +/)
     .t((v, l) => 'T' + l, /[\+\-\*\/]/)
-    .build('EOF');
+    .build(eofOptions);
 
   describe('Basic Lexing', () => {
     it('Discards tokens where an undefined is returned in the first function', () => {
@@ -19,7 +23,7 @@ describe('Lexer', () => {
   });
 
   describe('Basic Tokenization', () => {
-    let lexer: Lexer<string | number | undefined>;
+    let lexer: Lexer<string | number>;
 
     beforeEach(() => {
       lexer = new LexerBuilder<string | number>()
@@ -31,8 +35,8 @@ describe('Lexer', () => {
         .t('DIVIDE', '/')
         .t('LPAREN', '(')
         .t('RPAREN', ')')
-        .t(() => undefined, /\s+/) // whitespace
-        .build('EOF');
+        .t(null, /\s+/) // whitespace
+        .build(eofOptions as LexerBuilderDefineOptions<string | number>);
     });
 
     it('should tokenize a sequence of numbers and operators', () => {
@@ -62,7 +66,7 @@ describe('Lexer', () => {
     });
 
     it('should tokenize identifiers and string operators', () => {
-      lexer.reset('foo+bar');
+      lexer.reset('foo + bar');
 
       expect(lexer.nextToken().name).toBe('IDENTIFIER');
       expect(lexer.nextToken().name).toBe('PLUS');
@@ -71,7 +75,7 @@ describe('Lexer', () => {
     });
 
     it('should tokenize expressions with parentheses', () => {
-      lexer.reset('(a+b)*c');
+      lexer.reset('(a + b) * c');
 
       expect(lexer.nextToken().name).toBe('LPAREN');
       expect(lexer.nextToken().name).toBe('IDENTIFIER');
@@ -97,7 +101,7 @@ describe('Lexer', () => {
 
   describe('Token Handlers', () => {
     it('should apply token handlers to transform values', () => {
-      const lexer = new LexerBuilder()
+      const lexer = new LexerBuilder<string | number>()
         .t('HEX', /0x[0-9a-fA-F]+/, (lexeme) => parseInt(lexeme, 16))
         .t('FLOAT', /\d+\.\d+/, (lexeme) => parseFloat(lexeme))
         .t('UPPER', /[a-z]+/, (lexeme) => lexeme.toUpperCase())
@@ -114,13 +118,13 @@ describe('Lexer', () => {
     });
 
     it('should use lexeme as value when handler returns undefined', () => {
-      const lexer = new LexerBuilder()
-        .t('WORD', /\w+/, () => undefined)
+      const lexer = new LexerBuilder<string | undefined>()
+        .t('WORD', /\w+/, () => 'ignored')
         .build();
 
       lexer.reset('test');
       const token = lexer.nextToken();
-      expect(token.value).toBe('test');
+      expect(token.value).toBe('ignored');
     });
   });
 
@@ -128,8 +132,8 @@ describe('Lexer', () => {
     it('should discard tokens when name selector returns undefined', () => {
       const lexer = new LexerBuilder()
         .t('WORD', /\w+/)
-        .t(() => undefined, /\s+/)  // whitespace
-        .t(() => undefined, /\/\/.*/)  // comments
+        .t(null, /\s+/)  // whitespace
+        .t(null, /\/\/.*/)  // comments
         .build();
 
       lexer.reset('hello // this is a comment');
@@ -141,7 +145,7 @@ describe('Lexer', () => {
       const keywords = new Set(['if', 'else', 'while', 'for']);
       const lexer = new LexerBuilder()
         .t((value) => keywords.has(value) ? 'KEYWORD' : 'IDENTIFIER', /[a-zA-Z_]\w*/)
-        .t(() => undefined, /\s+/)
+        .t(null, /\s+/)
         .build();
 
       lexer.reset('if x while y foo');
@@ -158,7 +162,7 @@ describe('Lexer', () => {
     it('should track token positions correctly', () => {
       const lexer = new LexerBuilder()
         .t('WORD', /\w+/)
-        .t(() => undefined, /\s+/)
+        .t(null, /\s+/)
         .build();
 
       lexer.reset('hello world');
@@ -179,7 +183,7 @@ describe('Lexer', () => {
     it('should track line and column numbers in multiline input', () => {
       const lexer = new LexerBuilder()
         .t('WORD', /\w+/)
-        .t(() => undefined, /\s+/)
+        .t(null, /\s+/)
         .build();
 
       lexer.reset('first\nsecond\nthird');
@@ -206,7 +210,7 @@ describe('Lexer', () => {
     it('should report current position correctly', () => {
       const lexer = new LexerBuilder()
         .t('NUM', /\d+/)
-        .t(() => undefined, / /)
+        .t(null, / /)
         .build();
 
       lexer.reset('12 34');
@@ -221,7 +225,7 @@ describe('Lexer', () => {
     it('should report current file position correctly', () => {
       const lexer = new LexerBuilder()
         .t('WORD', /\w+/)
-        .t(() => undefined, /\s+/)
+        .t(null, /\s+/)
         .build();
 
       lexer.reset('foo\nbar');
@@ -235,10 +239,10 @@ describe('Lexer', () => {
   });
 
   describe('Seek Operations', () => {
-    let lexer: Lexer<string | undefined>;
+    let lexer: Lexer<string>;
 
     beforeEach(() => {
-      lexer = new LexerBuilder<string>()
+      lexer = new LexerBuilder()
         .t('CHAR', /[a-z]/)
         .build();
     });
@@ -286,7 +290,7 @@ describe('Lexer', () => {
     it('should reset position when reusing same string', () => {
       const lexer = new LexerBuilder()
         .t('NUM', /\d+/)
-        .t(() => undefined, / /)
+        .t(null, / /)
         .build();
 
       lexer.reset('1 2 3');
@@ -344,7 +348,7 @@ describe('Lexer', () => {
     it('should return EOF token at end of input', () => {
       const lexer = new LexerBuilder()
         .t('WORD', /\w+/)
-        .build('EOF');
+        .build(eofOptions);
 
       lexer.reset('test');
       lexer.nextToken();
@@ -359,7 +363,7 @@ describe('Lexer', () => {
     it('should use custom EOF token', () => {
       const lexer = new LexerBuilder()
         .t('NUM', /\d+/)
-        .build('END_OF_INPUT');
+        .build({ eofName: 'END_OF_INPUT' });
 
       lexer.reset('42');
       lexer.nextToken();
@@ -454,7 +458,7 @@ describe('Lexer', () => {
         .t('RBRACE', '}')
         .t('LPAREN', '(')
         .t('RPAREN', ')')
-        .t(() => undefined, /\s+/)
+        .t(null, /\s+/)
         .build();
 
       const code = 'if (x == 42) { return "success"; }';

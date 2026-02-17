@@ -1,6 +1,12 @@
 import type { Production } from "./utils-obj";
-import type { SimpleProduction, ProductionHandler } from "../bnf/types";
+import type { SimpleProduction } from "../bnf/types";
 
+/**
+ * Production handler function that processes matched production rules.
+ * Takes any number of arguments (matched symbols) and returns a value or undefined.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type ProductionHandler<TToken = any, TResult = any | undefined> = (...args: (TToken | TResult)[]) => TResult;
 
 export interface OperatorDefinition {
   name: string;
@@ -15,18 +21,19 @@ export interface ConflictPolicy {
   filterer?: (prod: Production, oprSet: Map<string, OperatorDefinition>) => OperatorDefinition | undefined;
 }
 
-export interface GrammarDefinition {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export interface GrammarDefinition<TToken = any, TResult = any | undefined> {
   moduleName: string;
   actionMode?: 'function' | 'constructor';
   mode?: 'lalr' | 'slr' | 'lr1';
 
   tokens: string[];
   productions: SimpleProduction[];
-  actions: (ProductionHandler | undefined)[];
+  actions: (ProductionHandler<TToken, TResult> | undefined)[];
   operators: OperatorDefinition[];
 
   startSymbol?: string;
-  eofToken?: string;
+  eofToken?: string; // name of the EOF token, default is '<<EOF>>'
 
   // conflict policy
   conflictPolicy?: ConflictPolicy;

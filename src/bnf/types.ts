@@ -1,11 +1,4 @@
 /**
- * Production handler function that processes matched production rules.
- * Takes any number of arguments (matched symbols) and returns a value or undefined.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type ProductionHandler = (...args: any[]) => (any | undefined);
-
-/**
  * Modifier that transforms data through a series of operations.
  * Used to modify input data and pass it to the next function or do nothing.
  */

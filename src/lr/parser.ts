@@ -1,5 +1,5 @@
 import { Token, TokenStream } from "../lexer/types";
-import { ProductionHandler } from "../bnf/types";
+import { ProductionHandler } from "./types";
 import { AutomatonActionRecord } from "./types";
 import { GSymbol } from "./utils-obj";
 import { ParsedGrammar } from "./generator";
@@ -8,7 +8,7 @@ import { getTokenString } from "../lexer/utils";
 
 export interface ParserStackItem<T> {
   s: number,
-  i?: Token<T>
+  i: Token<T>
 }
 
 
@@ -18,13 +18,13 @@ function identity(...x: any[]) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export class Parser<TToken = string | undefined, TContext = any, TResult = TToken> {
+export class Parser<TToken, TContext = any, TResult = TToken> {
 
   // defs
   action: { [id: number]: AutomatonActionRecord[] } = {};
   goto: { [id: number]: number[] } = {};
   actionMode: string;
-  actions: (ProductionHandler | undefined)[];
+  actions: (ProductionHandler<TToken, TResult> | undefined)[];
   startState: number = 0;
   symbols: GSymbol[];
   symbolsTable: { [name: string]: number };
@@ -38,7 +38,7 @@ export class Parser<TToken = string | undefined, TContext = any, TResult = TToke
   inError: boolean = false;
   context?: TContext = undefined;
 
-  stack?: ParserStackItem<TToken>[];
+  stack?: ParserStackItem<TToken | TResult>[];
 
   constructor(specs: ParsedGrammar) {
     this.action = specs.action;
@@ -72,14 +72,6 @@ export class Parser<TToken = string | undefined, TContext = any, TResult = TToke
     return true;
   }
 
-  /*
-  create(ctor, args) {
-    const args = [this.context].concat(args);
-    const factory = ctor.bind.apply(ctor, args);
-    return new factory();
-  }
-  */
-
   /**
    * Note: this only actually needs:
    * symbolsTable
@@ -90,17 +82,17 @@ export class Parser<TToken = string | undefined, TContext = any, TResult = TToke
    * @param context 
    * @returns 
    */
-  parse(stream: TokenStream<TToken>, context?: TContext): TResult | undefined {
+  parse(stream: TokenStream<TToken>, context?: TContext): TResult {
     this.stack = [];
     this.context = context;
 
     this.stream = stream;
     this.a = this.stream.nextToken();
-    this.stack.push({ s: this.startState });
+    this.stack.push({ s: this.startState, i: this.a });
     this.accepted = false;
     this.inError = false;
 
-    let top: ParserStackItem<TToken> | undefined = undefined;
+    let top: ParserStackItem<TToken | TResult>;
 
     while (!this.accepted && !this.inError) {
       top = this.stack[this.stack.length - 1];
@@ -122,11 +114,11 @@ export class Parser<TToken = string | undefined, TContext = any, TResult = TToke
           this.error(this.a);
       }
     }
-    return top?.i?.value as TResult | undefined;
+    return top!.i.value as TResult;
   }
 
   shift(state: number) {
-    this.stack!.push({ s: state, i: this.a });
+    this.stack!.push({ s: state, i: this.a! });
     this.a = this.stream!.nextToken();
   }
 
@@ -140,26 +132,16 @@ export class Parser<TToken = string | undefined, TContext = any, TResult = TToke
     const t = this.stack[this.stack.length - 1];
     const ns = this.goto[t.s][head];
 
-    let value;
-    if (this.actions) {
-      const action = this.actions[prodIndex] ?? identity;
-      const values = rhs.map(function (si) {
-        return si.i?.value;
-      });
+    const action = this.actions[prodIndex] ?? (identity as ProductionHandler<TToken, TResult>);
+    const values = rhs.map(si => si.i!.value);
 
-      value = action.apply(this.context, values);
-
-    }
-    //If we are debugging
-
-    if (this.symbols) {
-      const nt: Token<TToken> = { name: this.symbols[head].name, value: value, lexeme: '' };
-      this.stack.push({ s: ns, i: nt });
-    }
-    else {
-      const nt: Token<TToken> = { name: '', value: value, lexeme: '' };
-      this.stack.push({ s: ns, i: nt });
-    }
+    const value = action.apply(this.context, values);
+    const nt: Token<TToken | TResult> = {
+      name: this.symbols?.[head].name ?? '',
+      value,
+      lexeme: ''
+    };
+    this.stack.push({ s: ns, i: nt });
 
   }
 

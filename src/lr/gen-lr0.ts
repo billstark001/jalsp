@@ -2,9 +2,10 @@ import {
   AutomatonActionRecord,
   ConflictPolicy,
   GrammarDefinition,
-  OperatorDefinition
+  OperatorDefinition,
+  ProductionHandler
 } from "./types";
-import { ProductionHandler, SimpleProduction } from "../bnf/types";
+import { SimpleProduction } from "../bnf/types";
 import { GItem, Production, eps, GSymbol, isNonTerminal, NT, T, LR1Item } from "./utils-obj";
 import '../utils/array-extension';
 import { getIncrementName } from "../lexer/utils";

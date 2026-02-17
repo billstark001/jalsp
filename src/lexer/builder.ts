@@ -1,7 +1,16 @@
-import { ActionRecord, LexerOptions, LexerOptionsFull, TokenHandler, TokenNameSelector, TokenRecord } from "./types";
+import { ActionRecord, LexerOptions, TokenHandler, TokenNameSelector, TokenRecord } from "./types";
 import { getIncrementName } from "./utils";
 import { Lexer } from "./lexer";
 import { serializeFunction, deserializeFunction, SerializeOptions, DeserializeOptions, SerializedFunction } from "../utils/serializer";
+import { MethodKeyOf } from "../utils/typing";
+
+/**
+ * if eofValue is to be `undefined`, it must be assigned explicitly.
+ * Otherwise, it will default to eofName.
+ */
+export type LexerBuilderDefineOptions<T> = T extends string | undefined
+  ? { eofName?: string, eofValue?: T }
+  : { eofName?: string; eofValue: T };
 
 /**
  * Serialized representation of a RegExpLexerBuilder
@@ -16,7 +25,10 @@ export interface SerializedLexerBuilder {
   contextMethods?: Record<string, SerializedFunction>;
 }
 
-export class LexerBuilder<TValue, TAction extends Record<string, TokenHandler<TValue>> = Record<string, TokenHandler<TValue>>> {
+const ignoreName = () => undefined;
+const lexemeAsValue = <TValue>(lexeme: string) => lexeme as unknown as TValue;
+
+export class LexerBuilder<TValue = string, TAction extends Record<string, TokenHandler<TValue>> = Record<string, TokenHandler<TValue>>> {
 
   protected actions: ActionRecord<TValue>[];
   protected records: TokenRecord[];
@@ -77,45 +89,67 @@ export class LexerBuilder<TValue, TAction extends Record<string, TokenHandler<TV
     return this;
   }
 
-  protected registerAction(h?: TokenHandler<TValue> | string, n?: TokenNameSelector) {
+  protected registerAction(_handler?: TokenHandler<TValue> | MethodKeyOf<TAction>, nameSelector?: TokenNameSelector<TValue>) {
     let handler: TokenHandler<TValue> | undefined;
 
-    if (typeof h === 'string') {
+    if (typeof _handler === 'string') {
       // String method name
       if (!this.context) {
         throw new Error('Cannot use string method name without a context object');
       }
-      const method = this.context[h];
+      const method = this.context[_handler];
       if (!method) {
-        throw new Error(`Method '${h}' not found in context object`);
+        throw new Error(`Method '${_handler}' not found in context object`);
       }
       if (typeof method !== 'function') {
-        throw new Error(`'${h}' is not a function in context object`);
+        throw new Error(`'${_handler}' is not a function in context object`);
       }
       handler = method;
     } else {
-      handler = h;
+      handler = _handler as TokenHandler<TValue> | undefined;
     }
 
-    return this.actions.push({ handler, nameSelector: n }) - 1;
+    return this.actions.push({ handler, nameSelector }) - 1;
   }
 
   /**
-   * @param name The token name. 
+   * @param name The token name.
+   * - If a function is passed, it will be used as a name selector to determine the token name based on the matched lexeme.
+   * - If null or undefined is passed, or the passed function returns nullish, the token will be ignored.
    * @param pattern The matching pattern. 
    * - String inputs are treated as an exact match of that string.
    * - RegExp inputs are treated as the expression 
    * with global flag moved and sticky flag appended.
    * @param f The handler - can be a pure function or a string method name (if context object provided).
    */
-  t(name: string | TokenNameSelector, pattern: string | RegExp, f?: TokenHandler<TValue> | string) {
+
+  t(
+    this: TValue extends string ? this : never,
+    name: string | null | undefined | TokenNameSelector<TValue>,
+    pattern: string | RegExp
+  ): this;
+
+  t(
+    name: string | null | undefined | TokenNameSelector<TValue>,
+    pattern: string | RegExp,
+    f: TokenHandler<TValue> | MethodKeyOf<TAction>
+  ): this;
+
+  t(
+    name: string | null | undefined | TokenNameSelector<TValue>,
+    pattern: string | RegExp,
+    f?: TokenHandler<TValue> | MethodKeyOf<TAction>
+  ): this {
 
     // parse name
-    let realName: string;
-    let sel: TokenNameSelector | undefined = undefined;
-    if (typeof (name) == 'string')
+    let realName: string = '';
+    let sel: TokenNameSelector<TValue> | undefined = undefined;
+    if (typeof name === 'string')
       realName = name;
-    else {
+    else if (name == null) {
+      name = ignoreName;
+    }
+    if (typeof name === 'function') {
       while (this.usedTokens.has(this.optionalToken)) {
         this.optionalToken = getIncrementName(this.optionalToken);
       }
@@ -155,22 +189,38 @@ export class LexerBuilder<TValue, TAction extends Record<string, TokenHandler<TV
     return this;
   }
 
-  define(eofName: string | undefined, eofValue: TValue): LexerOptionsFull<TValue>;
-  define(eofName?: string): LexerOptions<TValue | undefined>;
-  define(eofName?: string, eofValue?: TValue): LexerOptions<TValue | undefined> {
+  define(
+    this: TValue extends string | undefined ? this : never,
+    options?: LexerBuilderDefineOptions<TValue>,
+  ): LexerOptions<TValue>;
+  define(options: LexerBuilderDefineOptions<TValue>): LexerOptions<TValue>;
+  define(options?: LexerBuilderDefineOptions<TValue>): LexerOptions<TValue> {
+    options ??= {} as LexerBuilderDefineOptions<TValue>;
+    const eofName = options.eofName;
+    let eofValue: TValue;
+    if ('eofValue' in options) {
+      eofValue = options.eofValue as TValue;
+    } else {
+      eofValue = eofName as unknown as TValue;
+    }
     return {
       actions: this.actions,
       records: this.records,
-      eofName: eofName,
-      eofValue: eofValue
-    }
+      eofName,
+      eofValue,
+      dummyHandler: lexemeAsValue,
+    };
   }
 
-  build(eofName: string | undefined, eofValue: TValue): Lexer<TValue>;
-  build(eofName?: string): Lexer<TValue | undefined>;
-  build(eofName?: string, eofValue?: TValue): Lexer<TValue | undefined> {
-    const options: LexerOptionsFull<TValue> = this.define(eofName, eofValue as TValue);
-    return new Lexer<TValue | undefined>(options);
+  build(
+    this: TValue extends string | undefined ? this : never,
+    options?: LexerBuilderDefineOptions<TValue>,
+  ): Lexer<TValue>;
+  build(options: LexerBuilderDefineOptions<TValue>): Lexer<TValue>;
+  build(options?: LexerBuilderDefineOptions<TValue>): Lexer<TValue> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const options2: LexerOptions<TValue> = (this as any).define(options);
+    return new Lexer(options2);
   }
 
   /**
@@ -207,7 +257,7 @@ export class LexerBuilder<TValue, TAction extends Record<string, TokenHandler<TV
   /**
    * Deserialize a builder from a serialized object
    */
-  static deserialize<TValue, TAction extends Record<string, TokenHandler<TValue>> = Record<string, TokenHandler<TValue>>>(
+  static deserialize<TValue = string, TAction extends Record<string, TokenHandler<TValue>> = Record<string, TokenHandler<TValue>>>(
     serialized: SerializedLexerBuilder,
     options?: DeserializeOptions
   ): LexerBuilder<TValue, TAction> {
@@ -228,7 +278,7 @@ export class LexerBuilder<TValue, TAction extends Record<string, TokenHandler<TV
     // Deserialize actions
     builder.actions = serialized.actions.map(action => ({
       handler: action.handler ? deserializeFunction(action.handler, options) as TokenHandler<TValue> : undefined,
-      nameSelector: action.nameSelector ? deserializeFunction(action.nameSelector, options) as TokenNameSelector : undefined,
+      nameSelector: action.nameSelector ? deserializeFunction(action.nameSelector, options) as TokenNameSelector<TValue> : undefined,
     }));
 
     return builder;

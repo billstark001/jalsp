@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   Position,
-  Token, LexerOptions, TokenHandler, TokenNameSelector, TokenStream,
+  Token, TokenHandler, TokenNameSelector, TokenStream,
   LexerPositionOptions,
-  LexerOptionsFull,
+  LexerOptions,
 } from "./types";
 import { getLCIndex, getLinePositions } from "./utils";
 
@@ -11,7 +11,7 @@ interface LexerRecord<T> {
   name: string;
   pat: RegExp | string;
   f: TokenHandler<T>;
-  n?: TokenNameSelector;
+  n?: TokenNameSelector<T>;
 }
 
 export class LexerError extends Error {
@@ -35,13 +35,10 @@ export class Lexer<T> implements TokenStream<T> {
   rec?: number[];
   pos: number;
   eofName: string;
-  eofValue?: T;
+  eofValue: T;
   dummyHandler: TokenHandler<T>;
 
   readonly records: LexerRecord<T>[];
-
-  constructor(options: LexerOptionsFull<T>);
-  constructor(options: LexerOptions<string | undefined>);
 
   constructor(options: LexerOptions<T>) {
     this.str = undefined;
@@ -51,7 +48,7 @@ export class Lexer<T> implements TokenStream<T> {
     this.records = [];
     this.eofName = eofName || Lexer.DEFAULT_EOF_TOKEN;
     this.eofValue = eofValue;
-    this.dummyHandler = dummyHandler ?? ((() => { }) as unknown as TokenHandler<T>);
+    this.dummyHandler = dummyHandler;
 
     for (const rec of records) {
       const { name, pattern, isRegExp, flags, handlerIndex } = rec;
@@ -103,7 +100,7 @@ export class Lexer<T> implements TokenStream<T> {
       // EOF reached
       return {
         name: this.eofName,
-        value: this.eofValue ?? (this.eofName as unknown as T),
+        value: this.eofValue,
         lexeme: this.eofName,
         position: origPos,
         pos: this.currentFilePosition()
@@ -150,10 +147,10 @@ export class Lexer<T> implements TokenStream<T> {
         }
 
         if (lexeme != null) {
-          const value = f(lexeme, lexemeIndex, arr) ?? lexeme;
+          const value = f(lexeme, lexemeIndex, arr);
           // determine name
           let realName = name;
-          if (n !== undefined) {
+          if (n != null) {
             const _realName = n(value, lexeme);
             if (_realName === undefined) // discard the token
               return this.nextToken();
