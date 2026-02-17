@@ -1,4 +1,4 @@
-function arrayEquals<T>(arr1?: T[], arr2?: T[]) {
+export function arrayEquals<T>(arr1?: T[], arr2?: T[]) {
   if (arr1 == arr2)
     return true;
   if (arr1 == undefined || arr2 == undefined)
@@ -10,7 +10,7 @@ function arrayEquals<T>(arr1?: T[], arr2?: T[]) {
   return flag;
 }
 
-function arrayEqualsStrict<T>(arr1?: T[], arr2?: T[]) {
+export function arrayEqualsStrict<T>(arr1?: T[], arr2?: T[]) {
   if (arr1 === arr2)
     return true;
   if (arr1 === undefined || arr2 === undefined)

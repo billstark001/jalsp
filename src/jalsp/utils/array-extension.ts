@@ -1,9 +1,23 @@
+import { arrayEquals, arrayEqualsStrict } from "./object";
 
-interface Array<T> {
-  flatMap<T, V>(callbackfn: (value: T, index: number, array: T[]) => V[], thisArg?: any): Array<V>
-  aggregate<T, V>(this: Array<T>, agg: (acc: V, x: T) => V, initial: V): V;
-  repeat<T>(this: Array<T>, times: number): Array<T>;
-  equals<T>(this: Array<T>, other?: Array<T>, strict?: boolean): boolean;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
+declare global {
+  interface Array<T> {
+    flatMap<T, V>(callbackfn: (value: T, index: number, array: T[]) => V[], thisArg?: any): Array<V>
+    aggregate<T, V>(this: Array<T>, agg: (acc: V, x: T) => V, initial: V): V;
+    repeat<T>(this: Array<T>, times: number): Array<T>;
+    equals<T>(this: Array<T>, other?: Array<T>, strict?: boolean): boolean;
+  }
+
+  interface Set<T> {
+    flatMap<T, V>(callbackfn: (value: T, index: number, array: T[]) => V[], thisArg?: any): Set<V>
+    addSet<T>(s: Set<T>): Set<T>;
+    deleteSet<T>(other: Set<T>): Set<T>;
+    add2<T>(s: T): boolean;
+    addSet2<T>(s: Set<T>): boolean;
+  }
 }
 
 Array.prototype.equals = function <T>(this: Array<T>, other?: Array<T>, strict?: boolean) {
@@ -24,25 +38,12 @@ Array.prototype.aggregate = function <T, V>(this: Array<T>, agg: (acc: V, x: T) 
   return acc;
 }
 
-Array.prototype.repeat = function<T>(this: Array<T>, times: number) {
+Array.prototype.repeat = function <T>(this: Array<T>, times: number) {
   if (times < 1)
     return [];
   return [].concat(...Array(times).fill(this));
 }
 
-// Array<Rule>.map<State>(callbackfn: (value: Rule, index: number, array: Rule[]) => State, thisArg?: any): State[]
-
-
-interface Set<T> {
-
-  flatMap<T, V>(callbackfn: (value: T, index: number, array: T[]) => V[], thisArg?: any): Set<V>
-
-  addSet<T>(s: Set<T>): Set<T>;
-  deleteSet<T>(other: Set<T>): Set<T>;
-
-  add2<T>(s: T): boolean;
-  addSet2<T>(s: Set<T>): boolean;
-}
 
 Set.prototype.deleteSet = function <T>(this: Set<T>, other: Set<T>) {
   this.forEach(x => {
