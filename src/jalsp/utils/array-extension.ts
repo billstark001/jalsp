@@ -3,8 +3,12 @@ import { arrayEquals, arrayEqualsStrict } from "./object";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
+type NestedArray<T> = Array<T | NestedArray<T>>;
+
 declare global {
   interface Array<T> {
+    flat<T>(this: NestedArray<T>, depth?: number): T[];
+    flat<T>(depth?: number): any[];
     flatMap<T, V>(callbackfn: (value: T, index: number, array: T[]) => V[], thisArg?: any): Array<V>
     aggregate<T, V>(this: Array<T>, agg: (acc: V, x: T) => V, initial: V): V;
     repeat<T>(this: Array<T>, times: number): Array<T>;
@@ -20,21 +24,35 @@ declare global {
   }
 }
 
+if (!Array.prototype.flat) {
+  Array.prototype.flat = function <T>(this: Array<T>, depth: number = 1): any[] {
+    if (depth < 1) {
+      return this.slice();
+    }
+
+    return this.reduce((acc: any[], val: any) => {
+      return acc.concat(Array.isArray(val) ? val.flat(depth - 1) : val);
+    }, []);
+  }
+}
+
+if (!Array.prototype.flatMap) {
+  Array.prototype.flatMap = function <T, V>(
+    callbackfn: (value: T, index: number, array: T[]) => V[],
+    thisArg?: any): Array<V> {
+    return this.map(callbackfn).reduce<V[]>((x, y) => x.concat(y), []);
+  }
+}
+
 Array.prototype.equals = function <T>(this: Array<T>, other?: Array<T>, strict?: boolean) {
   return strict ? arrayEqualsStrict(this, other) : arrayEquals(this, other);
 }
 
-Array.prototype.flatMap = function <T, V>(
-  callbackfn: (value: T, index: number, array: T[]) => V[],
-  thisArg?: any): Array<V> {
-  return this.map(callbackfn).reduce<V[]>((x, y) => x.concat(y), []);
-}
-
 Array.prototype.aggregate = function <T, V>(this: Array<T>, agg: (acc: V, x: T) => V, initial: V) {
   let acc = initial;
-  this.forEach(function (x) {
-    acc = agg(acc, x);
-  });
+  for (let i = 0; i < this.length; ++i) {
+    acc = agg(acc, this[i]);
+  }
   return acc;
 }
 
@@ -46,10 +64,10 @@ Array.prototype.repeat = function <T>(this: Array<T>, times: number) {
 
 
 Set.prototype.deleteSet = function <T>(this: Set<T>, other: Set<T>) {
-  this.forEach(x => {
-    if (other.has(x) && this.has(x))
+  for (const x of other) {
+    if (this.has(x))
       this.delete(x);
-  });
+  }
   return this;
 }
 
@@ -62,7 +80,9 @@ Set.prototype.flatMap = function <T, V>(
 }
 
 Set.prototype.addSet = function <T>(this: Set<T>, s: Set<T>) {
-  s.forEach(x => this.add(x));
+  for (const x of s) {
+    this.add(x);
+  }
   return this;
 }
 

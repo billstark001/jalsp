@@ -1,21 +1,10 @@
 
 // EBNF elements
 
-import { EbnfElement, ProductionHandlerModifier, SimpleProduction, ComplexProduction, ProductionHandler } from "../models/grammar";
-import { getIncrementName } from "../utils/str";
+import { EbnfElement, SimpleProduction, ComplexProduction, BnfElement, ComplexExpression } from "../bnf/types";
+import { getIncrementName } from "../lexer/utils";
+import '../utils/array-extension';
 
-
-export function isEbnf(elem: string | EbnfElement) {
-  if (elem == undefined || elem instanceof String || typeof (elem) == 'string')
-    return false;
-  return elem.isEbnf == true;
-}
-
-export function isEbnfList2(elem: any) {
-  return elem instanceof Array
-    && elem[0] instanceof Array
-    && (isEbnf(elem[0][0]) || typeof (elem[0][0]) == 'string' || elem[0][0] instanceof String);
-}
 
 // conversion
 
@@ -29,7 +18,7 @@ function convertSingle(prod: ComplexProduction, getName: (init: string) => strin
     const current = cache.pop()!;
     var handled = false;
     for (var i = 0; i < current.expr.length; ++i) {
-      if (isEbnf(current.expr[i])) {
+      if (current.expr[i].isEbnf) {
         handled = true;
         const curElem = current.expr[i] as EbnfElement;
         const preExpr = current.expr.slice(0, i);
@@ -74,13 +63,13 @@ function convertSingle(prod: ComplexProduction, getName: (init: string) => strin
           curElem.productionList.forEach(
             pl => newExprs.push({
               name: dashed,
-              expr: [dashed as string | EbnfElement].concat(pl),
+              expr: [{ type: 'identifier', value: dashed } as BnfElement | EbnfElement].concat(pl),
               action: ['append', undefined, [1, 1]]
             })
           );
           newExprs.push({
             name: current.name,
-            expr: [dashed as string | EbnfElement].concat(postExpr),
+            expr: [{ type: 'identifier', value: dashed } as BnfElement | EbnfElement].concat(postExpr),
             action: ['apply', current.action, [0]]
           });
         } else if (curElem.type === 'mult') {
@@ -96,7 +85,7 @@ function convertSingle(prod: ComplexProduction, getName: (init: string) => strin
           );
         } else if (curElem.type === 'group') {
           const mult = curElem.mult ?? 1;
-          const withMult = curElem.mult != undefined;
+          // const withMult = curElem.mult != undefined;
           if (mult < 1)
             newExprs.push({
               name: current.name,
@@ -108,7 +97,7 @@ function convertSingle(prod: ComplexProduction, getName: (init: string) => strin
             for (var i = 0; i < mult; ++i) {
               var _arr = arr
                 .map(x => curElem.productionList.map(y => x.concat(y)));
-              var __arr: (string | EbnfElement)[][] = [];
+              var __arr: ComplexExpression[] = [];
               _arr.forEach(x => x.forEach(xx => __arr.push(xx)));
               arr = __arr;
             }
@@ -148,7 +137,7 @@ export function convertToBnf(unparsed: ComplexProduction[], actionOverride?: num
   }
   for (const prod of unparsed) {
     for (var token of prod.expr) {
-      if (isEbnf(token))
+      if (token.isEbnf)
         nameStack.push(token as EbnfElement);
       else if (!nonTerminals.has(String(token)))
         terminals.add(String(token));
@@ -158,7 +147,7 @@ export function convertToBnf(unparsed: ComplexProduction[], actionOverride?: num
     const curElem = nameStack.pop()!;
     for (var expr of curElem.productionList) {
       for (var token of expr) {
-        if (isEbnf(token))
+        if (token.isEbnf)
           nameStack.push(token as EbnfElement);
         else if (!nonTerminals.has(String(token)))
           terminals.add(String(token));
@@ -194,145 +183,3 @@ export function convertToBnf(unparsed: ComplexProduction[], actionOverride?: num
 
   return converted;
 }
-
-// function compile
-
-export const identityFunc: ProductionHandler = (...args) => args;
-
-export function compileActionRecord(rec: ProductionHandlerModifier, f: (i: number) => ProductionHandler | undefined): ProductionHandler | undefined {
-
-  var nextFunc: ProductionHandler | undefined;
-  if (typeof (rec[1]) == 'number')
-    nextFunc = f(rec[1]);
-  else if (rec[1] instanceof Number)
-    nextFunc = f(Number(rec[1]));
-  else if (rec[1] === undefined)
-    nextFunc = identityFunc;
-  else
-    nextFunc = compileActionRecord(rec[1], f);
-
-  // nextFunc = (...args) => { console.log(rec[0]); return nextFunc!(...args); }
-
-  var nextFunc2 = nextFunc ?? identityFunc;
-
-  if (rec[0] == 'epsilon') {
-    var i = rec[2][0] ?? 0;
-    return (...args) => nextFunc2(...(args.slice(0, i).concat([undefined]).concat(args.slice(i))));
-  } else if (rec[0] == 'merge') {
-    var i = rec[2][0] ?? 0;
-    var t = rec[2][1] ?? 0;
-    return (...args) => nextFunc2(...(args.slice(0, i).concat([args.slice(i, i + t)]).concat(args.slice(i + t))));
-  } else if (rec[0] == 'collect') {
-    var i = rec[2][0] ?? -1; // currently useless
-    return nextFunc === undefined ?
-      (...args) => [args, []] :
-      (...args) => nextFunc!(args, []);
-  } else if (rec[0] == 'append') {
-    var i = rec[2][0] ?? 1; // currently useless
-    var j = rec[2][1] ?? 1;
-    return nextFunc === undefined ?
-      (...args) => [args[0][0], args[0][1].concat([args.slice(1)])] :
-      (...args) => nextFunc!(args[0][0], args[0][1].concat([args.slice(1)]));
-  } else if (rec[0] == 'apply') {
-    var i = rec[2][0] ?? 0; // currently useless
-    return (pre: any[], post: any[]) => nextFunc2(...(pre[0].concat([pre[1]]).concat(post)));
-  } else {
-    return nextFunc;
-  }
-}
-
-/*
-export function getBnfName(self: EbnfElement, head: string, id: number, additionalLength: number) {
-  return `EBNF_${self.type}_${head}_${id}_L${additionalLength}`;
-}
-
-export function toBnf(self: EbnfElement, head: string, id: number, additional: NaiveProduction[]) {
-  if (self.type === 'group')
-    return toBnfGroup(self, head, id, additional);
-  else if (self.type === 'optional')
-    return toBnfOptional(self, head, id, additional);
-  else if (self.type === 'repeat')
-    return toBnfRepeat(self, head, id, additional);
-  else
-    return getBnfName(self, head, id, additional.length);
-}
-
-export function toBnfOptional(self: EbnfElement, head: string, id: number, additional: NaiveProduction[]) {
-  //arrange an unique name
-  var prod2: NaiveProduction;
-  var prod1: NaiveProduction;
-  var name = getBnfName(self, head, id, additional.length);
-
-  if (self.productionList.length > 1) {
-    prod1 = [name, [], (..._) => [] as any];
-    prod2 = [name, self.productionList, () => [].slice.apply(arguments) as any];
-  } else {
-    prod1 = [name, [], (..._) => undefined];
-    prod2 = [name, self.productionList, (...p) => p[0].v];
-  }
-
-  additional.push(prod1);
-  additional.push(prod2);
-  return name;
-}
-
-export function toBnfRepeat(self: EbnfElement, head: string, id: number, additional: NaiveProduction[]) {
-  //arrange an unique name
-  var prod2: NaiveProduction;
-  var prod1: NaiveProduction;
-  var name = getBnfName(self, head, id, additional.length);
-
-  prod1 = [name, [], (..._) => [] as any];
-  prod2 = [
-    name,
-    [name as string | EbnfElement].concat(self.productionList),
-    (...args) => args[0].concat(args.slice(1))
-  ];
-  additional.push(prod1);
-  additional.push(prod2);
-
-
-  additional.push(prod1);
-  additional.push(prod2);
-  return name;
-}
-
-export function toBnfGroup(self: EbnfElement, head: string, id: number, additional: NaiveProduction[]) {
-  //arrange an unique name
-  var prod2: NaiveProduction;
-  var prod1: NaiveProduction;
-  var name = getBnfName(self, head, id, additional.length);
-
-  var alternatives = [self.productionList];
-  if (self.productionList.length > 1 && Array.isArray(self.productionList[0])) {
-    alternatives = self.productionList;
-  }
-  alternatives.forEach(function (e) {
-    var prod: NaiveProduction;
-    if (!Array.isArray(e)) e = [e];
-    if (e.length > 1) {
-      prod = [name, e, function () {
-        return Array.prototype.slice.call(arguments);
-      }];
-    } else {
-      prod = [name, e, function () {
-        return arguments[0];
-      }];
-    }
-
-    additional.push(prod);
-  });
-
-  if (self.productionList.length > 1) {
-    prod1 = [name, [], (..._) => [] as any];
-    prod2 = [name, self.productionList, () => [].slice.apply(arguments) as any];
-  } else {
-    prod1 = [name, [], (..._) => undefined];
-    prod2 = [name, self.productionList, (...p) => p[0].v];
-  }
-
-  additional.push(prod1);
-  additional.push(prod2);
-  return name;
-}
-*/
