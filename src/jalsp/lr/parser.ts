@@ -1,14 +1,14 @@
 import { Token, TokenStream } from "../lexer/types";
-import { BnfElement, ProductionHandler } from "../bnf/types";
+import { ProductionHandler } from "../bnf/types";
 import { AutomatonActionRecord } from "./types";
 import { GSymbol } from "./utils-obj";
 import { ParsedGrammar } from "./generator";
 import { ParserError } from "./error";
 import { getTokenString } from "../lexer/utils";
 
-export interface ParserStackItem {
+export interface ParserStackItem<T> {
   s: number,
-  i?: Token<BnfElement>
+  i?: Token<T>
 }
 
 
@@ -17,7 +17,8 @@ function identity(...x: any[]) {
   return x;
 }
 
-export default class Parser<T> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export class Parser<TToken = string, TContext = any, TResult = TToken> {
 
   // defs
   action: { [id: number]: AutomatonActionRecord[] } = {};
@@ -30,14 +31,14 @@ export default class Parser<T> {
 
   // runtime
 
-  stream?: TokenStream<BnfElement>;
-  a?: Token<BnfElement>;
+  stream?: TokenStream<TToken>;
+  a?: Token<TToken>;
   an?: number;
   accepted: boolean = false;
   inError: boolean = false;
-  context?: T = undefined;
+  context?: TContext = undefined;
 
-  stack?: ParserStackItem[];
+  stack?: ParserStackItem<TToken>[];
 
   constructor(specs: ParsedGrammar) {
     this.action = specs.action;
@@ -89,7 +90,7 @@ export default class Parser<T> {
    * @param context 
    * @returns 
    */
-  parse(stream: TokenStream<BnfElement>, context?: T) {
+  parse(stream: TokenStream<TToken>, context?: TContext): TResult | undefined {
     this.stack = [];
     this.context = context;
 
@@ -99,7 +100,7 @@ export default class Parser<T> {
     this.accepted = false;
     this.inError = false;
 
-    let top: ParserStackItem | undefined = undefined;
+    let top: ParserStackItem<TToken> | undefined = undefined;
 
     while (!this.accepted && !this.inError) {
       top = this.stack[this.stack.length - 1];
@@ -121,7 +122,7 @@ export default class Parser<T> {
           this.error(this.a);
       }
     }
-    return top?.i?.value;
+    return top?.i?.value as TResult | undefined;
   }
 
   shift(state: number) {
@@ -152,11 +153,11 @@ export default class Parser<T> {
     //If we are debugging
 
     if (this.symbols) {
-      const nt: Token<BnfElement> = { name: this.symbols[head].name, value: value, lexeme: '' };
+      const nt: Token<TToken> = { name: this.symbols[head].name, value: value, lexeme: '' };
       this.stack.push({ s: ns, i: nt });
     }
     else {
-      const nt: Token<BnfElement> = { name: '', value: value, lexeme: '' };
+      const nt: Token<TToken> = { name: '', value: value, lexeme: '' };
       this.stack.push({ s: ns, i: nt });
     }
 
@@ -166,7 +167,7 @@ export default class Parser<T> {
     this.accepted = true;
   }
 
-  error(token: Token<BnfElement> | string) {
+  error(token: Token<TToken> | string) {
 
     if (typeof token === 'string') {
       throw new ParserError(token);

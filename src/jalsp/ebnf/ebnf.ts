@@ -16,8 +16,8 @@ function convertSingle(prod: ComplexProduction, getName: (init: string) => strin
   const ret: SimpleProduction[] = [];
   while (cache.length > 0) {
     const current = cache.pop()!;
-    var handled = false;
-    for (var i = 0; i < current.expr.length; ++i) {
+    let handled = false;
+    for (let i = 0; i < current.expr.length; ++i) {
       if (current.expr[i].isEbnf) {
         handled = true;
         const curElem = current.expr[i] as EbnfElement;
@@ -40,7 +40,7 @@ function convertSingle(prod: ComplexProduction, getName: (init: string) => strin
           if (mult < 1)
             continue;
           else
-            for (var t = 1; t <= mult; ++t)
+            for (let t = 1; t <= mult; ++t)
               curElem.productionList.forEach(
                 pl => newExprs.push({
                   name: current.name,
@@ -73,7 +73,7 @@ function convertSingle(prod: ComplexProduction, getName: (init: string) => strin
             action: ['apply', current.action, [0]]
           });
         } else if (curElem.type === 'mult') {
-          var mult = curElem.mult ?? 0;
+          let mult = curElem.mult ?? 0;
           if (mult < 0)
             mult = 0;
           curElem.productionList.forEach(
@@ -93,15 +93,15 @@ function convertSingle(prod: ComplexProduction, getName: (init: string) => strin
               action: ['collect', current.action, [i, 0]]
             });
           else {
-            var arr = [preExpr];
-            for (var i = 0; i < mult; ++i) {
-              var _arr = arr
+            let arr = [preExpr];
+            for (let i = 0; i < mult; ++i) {
+              const _arr = arr
                 .map(x => curElem.productionList.map(y => x.concat(y)));
-              var __arr: ComplexExpression[] = [];
+              const __arr: ComplexExpression[] = [];
               _arr.forEach(x => x.forEach(xx => __arr.push(xx)));
               arr = __arr;
             }
-            for (var prod2 of arr)
+            for (const prod2 of arr)
               newExprs.push({
                 name: current.name,
                 expr: prod2.concat(postExpr),
@@ -136,7 +136,7 @@ export function convertToBnf(unparsed: ComplexProduction[], actionOverride?: num
     nonTerminals.add(prod.name);
   }
   for (const prod of unparsed) {
-    for (var token of prod.expr) {
+    for (const token of prod.expr) {
       if (token.isEbnf)
         nameStack.push(token as EbnfElement);
       else if (!nonTerminals.has(String(token)))
@@ -145,8 +145,8 @@ export function convertToBnf(unparsed: ComplexProduction[], actionOverride?: num
   }
   while (nameStack.length > 0) {
     const curElem = nameStack.pop()!;
-    for (var expr of curElem.productionList) {
-      for (var token of expr) {
+    for (const expr of curElem.productionList) {
+      for (const token of expr) {
         if (token.isEbnf)
           nameStack.push(token as EbnfElement);
         else if (!nonTerminals.has(String(token)))
@@ -165,15 +165,15 @@ export function convertToBnf(unparsed: ComplexProduction[], actionOverride?: num
     return name;
   };
 
-  for (var i = 0; i < unparsed.length; ++i) {
+  for (let i = 0; i < unparsed.length; ++i) {
     const current: ComplexProduction = {
       name: unparsed[i].name,
       expr: unparsed[i].expr,
       action: actionOverride ?? unparsed[i]?.action ?? i
     }
     const parsed = convertSingle(current, getName);
-    for (var bnf of parsed) {
-      var sign = JSON.stringify([bnf.name, bnf.expr]);
+    for (const bnf of parsed) {
+      const sign = JSON.stringify([bnf.name, bnf.expr]);
       if (!convertedCache.has(sign)) {
         convertedCache.add(sign);
         converted.push(bnf);

@@ -28,7 +28,7 @@ export class LexerError extends Error {
 
 export const DEFAULT_EOF_TOKEN = '<<EOF>>';
 
-export class Lexer implements TokenStream {
+export class Lexer implements TokenStream<string> {
 
   static readonly DEFAULT_EOF_TOKEN = DEFAULT_EOF_TOKEN;
 

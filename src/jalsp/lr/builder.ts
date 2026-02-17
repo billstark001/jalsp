@@ -2,10 +2,10 @@ import { lexBnf, parseBnf } from "../bnf/bnf";
 import { lexAbnf, parseAbnf } from "../bnf/abnf";
 import { convertToBnf } from "../ebnf/ebnf";
 import { ParserError } from "./error";
-import { BnfElement, ComplexProduction, ProductionHandler, SimpleProduction } from "../bnf/types";
+import { BnfElement, ComplexProduction, EbnfElement, ProductionHandler, SimpleProduction } from "../bnf/types";
 import { GrammarDefinition, OperatorDefinition } from "./types";
 import { Token } from "../lexer/types";
-import LRGenerator, { ParsedGrammar } from "./generator";
+import { LRGenerator, ParsedGrammar } from "./generator";
 import { serializeFunction, deserializeFunction, SerializeOptions, DeserializeOptions, SerializedFunction } from "../utils/serializer";
 
 export interface GrammarBuildingOptions {
@@ -27,10 +27,9 @@ export interface SerializedGrammarBuilder {
   operators: OperatorDefinition[];
   lowestPrecedence: number;
   actions: Array<SerializedFunction | undefined>;
-  parseEbnf?: SerializedFunction;
 }
 
-export default class LRGrammarBuilder {
+export class LRGrammarBuilder {
 
   protected productions: SimpleProduction[];
   protected operators: OperatorDefinition[];
@@ -41,11 +40,11 @@ export default class LRGrammarBuilder {
 
   protected actions: (ProductionHandler | undefined)[];
 
-  protected parseEbnf?: (prods: Token<BnfElement>[]) => ComplexProduction[];
+  protected parseEbnf?: (prods: Token<EbnfElement | BnfElement>[]) => ComplexProduction[];
 
   constructor(grammar?: LRGrammarBuilder | GrammarDefinition) {
-    var builder: LRGrammarBuilder | undefined = undefined;
-    var def: GrammarDefinition | undefined = undefined;
+    let builder: LRGrammarBuilder | undefined = undefined;
+    let def: GrammarDefinition | undefined = undefined;
     if (grammar !== undefined) {
       if (grammar instanceof LRGrammarBuilder) {
         builder = grammar;
@@ -90,7 +89,7 @@ export default class LRGrammarBuilder {
     let productions: SimpleProduction[];
     let operators: OperatorDefinition[];
     let actions: (ProductionHandler | undefined)[];
-    
+
     if (grammar instanceof LRGrammarBuilder) {
       productions = grammar.productions;
       operators = grammar.operators;
@@ -104,7 +103,7 @@ export default class LRGrammarBuilder {
     // Add actions and update action indices in productions
     const actionIndexOffset = this.actions.length;
     this.actions.push(...actions.map(x => x));
-    
+
     // Add productions with adjusted action indices
     for (const prod of productions) {
       const newProd = { ...prod };
@@ -169,7 +168,7 @@ export default class LRGrammarBuilder {
     return this;
   }
 
-  registerEbnfParser(parser: (prods: Token<BnfElement>[]) => ComplexProduction[]) {
+  registerEbnfParser(parser: (prods: Token<BnfElement | EbnfElement>[]) => ComplexProduction[]) {
     this.parseEbnf = parser;
   }
 
@@ -189,7 +188,7 @@ export default class LRGrammarBuilder {
       prods = [prods as ComplexProduction];
 
     const handlerIndex = this.act(handler);
-    var simpleProds = convertToBnf(prods, handlerIndex);
+    const simpleProds = convertToBnf(prods, handlerIndex);
     this.bnfInner(simpleProds);
 
     return this;
@@ -198,9 +197,9 @@ export default class LRGrammarBuilder {
   opr(association: 'nonassoc' | 'left' | 'right', ...oprs: string[]): LRGrammarBuilder;
   opr(precedence: number, association: 'nonassoc' | 'left' | 'right', ...oprs: string[]): LRGrammarBuilder;
   opr(param0: number | string, ...params: string[]): LRGrammarBuilder {
-    var precedence = this.lowestPrecedence - 1;
-    var assoc: string;
-    var oprs: string[];
+    let precedence = this.lowestPrecedence - 1;
+    let assoc: string;
+    let oprs: string[];
     if (typeof (param0) == 'number') {
       precedence = Number(param0);
       assoc = params[0];
@@ -231,19 +230,19 @@ export default class LRGrammarBuilder {
   }
 
   define(options?: GrammarBuildingOptions): GrammarDefinition {
-    var tokens = options?.tokens;
+    let tokens = options?.tokens;
     if (tokens === undefined) { // calculate all terminals
       tokens = [];
-      var nonTerminalProds = new Set(this.productions.map(x => x.name));
+      const nonTerminalProds = new Set(this.productions.map(x => x.name));
       this.productions.forEach(x => x.expr.forEach(elem => {
-        const name = typeof elem === 'object' && 'value' in elem 
-          ? String(elem.value) 
+        const name = typeof elem === 'object' && 'value' in elem
+          ? String(elem.value)
           : String(elem);
         if (!nonTerminalProds.has(name))
           tokens!.push(name);
       }));
     }
-    var mode = options?.mode?.toLowerCase() as 'lalr' | 'slr' | 'lr1' | undefined;
+    const mode = options?.mode?.toLowerCase() as 'lalr' | 'slr' | 'lr1' | undefined;
 
     return {
       moduleName: options?.moduleName || 'Parser',
@@ -259,8 +258,8 @@ export default class LRGrammarBuilder {
   }
 
   build(options?: GrammarBuildingOptions): ParsedGrammar {
-    var def = this.define(options);
-    var gen = new LRGenerator(def);
+    const def = this.define(options);
+    const gen = new LRGenerator(def);
     return gen.generateParsedGrammar();
   }
 
@@ -268,7 +267,7 @@ export default class LRGrammarBuilder {
    * Serialize the builder to a JSON-compatible object
    */
   serialize(options?: SerializeOptions): SerializedGrammarBuilder {
-    const serializedActions = this.actions.map(action => 
+    const serializedActions = this.actions.map(action =>
       action ? serializeFunction(action, options) : undefined
     );
 
@@ -278,11 +277,6 @@ export default class LRGrammarBuilder {
       lowestPrecedence: this.lowestPrecedence,
       actions: serializedActions,
     };
-
-    // Serialize parseEbnf if present
-    if (this.parseEbnf) {
-      serialized.parseEbnf = serializeFunction(this.parseEbnf, options);
-    }
 
     return serialized;
   }
@@ -295,33 +289,25 @@ export default class LRGrammarBuilder {
     options?: DeserializeOptions
   ): LRGrammarBuilder {
     const builder = new LRGrammarBuilder();
-    
+
     builder.productions = serialized.productions.map(p => ({ ...p }));
     builder.operators = serialized.operators.map(o => ({ ...o }));
     builder.lowestPrecedence = serialized.lowestPrecedence;
-    
+
     // Rebuild caches
     builder.prodCache.clear();
-    builder.productions.forEach((x, i) => 
+    builder.productions.forEach((x, i) =>
       builder.prodCache.set(JSON.stringify([x.name, x.expr]), i)
     );
     builder.oprCache.clear();
-    builder.operators.forEach((x, i) => 
+    builder.operators.forEach((x, i) =>
       builder.oprCache.set(x.name, i)
     );
 
     // Deserialize actions
-    builder.actions = serialized.actions.map(action => 
+    builder.actions = serialized.actions.map(action =>
       action ? deserializeFunction(action, options) as ProductionHandler : undefined
     );
-
-    // Deserialize parseEbnf if present
-    if (serialized.parseEbnf) {
-      builder.parseEbnf = deserializeFunction(
-        serialized.parseEbnf, 
-        options
-      ) as (prods: Token<BnfElement>[]) => ComplexProduction[];
-    }
 
     return builder;
   }

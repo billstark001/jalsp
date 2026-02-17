@@ -1,9 +1,9 @@
-import LR0Generator from "./gen-lr0";
+import { LR0Generator } from "./gen-lr0";
 import { GrammarDefinition, AutomatonActionRecord } from "./types";
 import { Production, LR1Item, isNonTerminal, GSymbol } from "./utils-obj";
 import { EOF_INDEX, closureLR1, findState } from "./utils";
 
-export default class LALRGenerator extends LR0Generator {
+export class LALRGenerator extends LR0Generator {
   // Override with specific types for LR1
   override startItem!: LR1Item[];
   override statesTable!: LR1Item[][];
@@ -118,7 +118,7 @@ export default class LALRGenerator extends LR0Generator {
       const p = gItem.production;
       const lookahead = otherLR1item.lookahead;
       const pIndex = this.productions.findIndex(x => x.equals(p));
-      
+
       // Check if production was found
       if (pIndex < 0) {
         console.warn(`Production not found when merging states: ${p}`);

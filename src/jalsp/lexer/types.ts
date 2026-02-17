@@ -33,13 +33,6 @@ export interface TokenStream<T = string> {
   currentFilePosition(): Position;
 }
 
-// export interface TokenRecord {
-//   [0]: string; // name
-//   [1]: string; // pattern
-//   [2]: string; // flags
-//   [3]: number; // handler
-// }
-
 export interface TokenRecord {
   name: string;
   pattern: string;
@@ -57,7 +50,7 @@ export interface ActionRecord {
 export interface TokenDefinition {
   actions: ActionRecord[];
   records: TokenRecord[];
-  eofToken?: string
+  eofToken?: string;
 }
 
 export type LexerPositionOptions = 'begin' | 'end' | 'current';

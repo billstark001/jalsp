@@ -1,9 +1,9 @@
-import LR0Generator from "./gen-lr0";
+import { LR0Generator } from "./gen-lr0";
 import { GrammarDefinition, AutomatonActionRecord } from "./types";
 import { Production, GItem, isNonTerminal } from "./utils-obj";
 import { EOF_INDEX, findState } from "./utils";
 
-export default class SLRGenerator extends LR0Generator {
+export class SLRGenerator extends LR0Generator {
   constructor(grammar: GrammarDefinition) {
     super(grammar);
     this.computeSLR();
@@ -20,16 +20,16 @@ export default class SLRGenerator extends LR0Generator {
 
     states.push(this.startItem);
     let i = 0;
-    
+
     while (i < states.length) {
       const Ii = states[i];
       const act = (this.action[i] = this.action[i] ?? {});
-      
+
       for (const gItem of Ii) {
         if (gItem.isAtEnd()) {
           const p = gItem.production;
           const pIndex = this.productions.indexOf(p);
-          
+
           if (!p.head.equals(this.S1)) {
             const follow = this.follow[p.head.toString()];
             for (const a of follow) {
@@ -46,12 +46,12 @@ export default class SLRGenerator extends LR0Generator {
         } else {
           const a = gItem.symbolAhead();
           const Ij = this.gotoLR0(Ii, a);
-          
+
           let j = findState(states, Ij);
           if (j < 0) {
             j = states.push(Ij) - 1;
           }
-          
+
           const an = this.symbolsTable[a.name];
           if (isNonTerminal(a)) {
             (this.goto[i] = this.goto[i] ?? {})[an] = j;
@@ -63,7 +63,7 @@ export default class SLRGenerator extends LR0Generator {
       }
       i++;
     }
-    
+
     this.statesTable = states;
     this.startState = 0;
   }

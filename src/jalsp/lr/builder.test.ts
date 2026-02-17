@@ -1,7 +1,5 @@
-import LRGrammarBuilder from './builder';
+import { LRGrammarBuilder } from './builder';
 import { GrammarDefinition } from './types';
-import { Token } from '../lexer/types';
-import { BnfElement, ComplexProduction } from '../bnf/types';
 
 describe('LRGrammarBuilder', () => {
   describe('clone()', () => {
@@ -215,18 +213,6 @@ describe('LRGrammarBuilder', () => {
       const def = builder2.define();
       const multOpr = def.operators.find(o => o.name === '*');
       expect(multOpr?.prior).toBe(9); // Should use copied lowestPrecedence
-    });
-
-    it('should copy parseEbnf from another builder', () => {
-      const builder1 = new LRGrammarBuilder();
-      const mockParser = (_tokens: Token<BnfElement>[]) =>
-        [{ name: 'test', expr: [], action: undefined }] as ComplexProduction[];
-      builder1.registerEbnfParser(mockParser);
-
-      const builder2 = new LRGrammarBuilder(builder1);
-
-      // parseEbnf should be copied
-      expect(() => builder2.ebnf('S = (A | B)')).not.toThrow();
     });
   });
 

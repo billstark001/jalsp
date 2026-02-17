@@ -43,7 +43,7 @@ var parser = new LRGrammarBuilder()
   .opr(16, 'left', '*')
   .opr('left', '+')
 
-  .build({ mode: 'SLR', eofToken: 'eof' });
+  .build({ mode: 'slr', eofToken: 'eof' });
 ```
 
 TBD

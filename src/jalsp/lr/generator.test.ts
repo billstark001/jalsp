@@ -1,4 +1,4 @@
-import LRGenerator, { LR0Generator, SLRGenerator, LALRGenerator } from './generator';
+import { LRGenerator, LR0Generator, SLRGenerator, LALRGenerator } from './generator';
 import { GrammarDefinition } from './types';
 
 describe('Parser Generators', () => {

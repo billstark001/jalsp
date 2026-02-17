@@ -29,7 +29,7 @@ export interface ParsedGrammar {
   symbolsTable: { [name: string]: number };
 }
 
-export default class LR0Generator {
+export class LR0Generator {
   tokens: Set<string>;
   productions: Production[];
   actions: (ProductionHandler | undefined)[];
