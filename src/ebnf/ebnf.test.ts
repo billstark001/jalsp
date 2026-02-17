@@ -1,9 +1,10 @@
 
 
 import { lexBnf, parseBnf } from "../bnf/bnf";
-import { convertEbnfToBnf } from "./ebnf";
+import { convertEbnfToBnf, lexEbnf } from "./ebnf";
 import { parseEbnf } from './ebnf-parser';
-import { BnfElement, EbnfElement } from "../bnf/types";
+import { BnfElement } from "../bnf/types";
+import { ComplexExpression } from "./types";
 
 const testGrammar = `
 
@@ -19,7 +20,7 @@ expr = expr OPR2 expr | OPR1 expr | expr '?' expr ':' expr | '(' expr ')'
 `;
 
 // Helper function to check if an expression contains a specific identifier
-function hasIdentifier(expr: (BnfElement | EbnfElement)[], identifier: string): boolean {
+function hasIdentifier(expr: ComplexExpression, identifier: string): boolean {
   return expr.some(elem =>
     !elem.isEbnf &&
     (elem.type === 'identifier' || elem.type === 'literal') &&
@@ -27,18 +28,59 @@ function hasIdentifier(expr: (BnfElement | EbnfElement)[], identifier: string): 
   );
 }
 
+describe('Lexing EBNF grammars', () => {
+
+  describe('EBNF mode', () => {
+    it('should tokenize EBNF with repetition', () => {
+      const tokens = lexEbnf('<list> ::= <item> { "," <item> }');
+
+      const braces = tokens.filter(t => t.name === 'CB_L' || t.name === 'CB_R');
+      expect(braces).toHaveLength(2);
+    });
+
+    it('should handle optional elements', () => {
+      const tokens = lexEbnf('<item> ::= <val> [ "optional" ]');
+
+      const brackets = tokens.filter(t => t.name === 'SB_L' || t.name === 'SB_R');
+      expect(brackets).toHaveLength(2);
+    });
+
+    it('should handle grouping', () => {
+      const tokens = lexEbnf('<expr> ::= ( <a> | <b> ) <c>');
+
+      const parens = tokens.filter(t => t.name === 'RB_L' || t.name === 'RB_R');
+      expect(parens).toHaveLength(2);
+    });
+
+    it('should handle numbers', () => {
+      const tokens = lexEbnf('<repeat> ::= 3 * <item>');
+
+      const numberToken = tokens.find(t => t.name === 'NON_NEG_INTEGER');
+      expect(numberToken).toBeDefined();
+      expect(numberToken!.value.type).toBe('number');
+      expect((numberToken!.value as BnfElement).value).toBe(3);
+    });
+
+    it('should handle question mark', () => {
+      const tokens = lexEbnf('<optional> ::= <item>?');
+
+      expect(tokens.some(t => t.name === 'QUES')).toBe(true);
+    });
+  });
+});
+
 describe('Parsing BNF and EBNF syntax', () => {
 
   it('parses BNF grammar', () => {
-    expect(lexBnf(testBnf, true).length).toBeGreaterThan(0);
+    expect(lexEbnf(testBnf).length).toBeGreaterThan(0);
   });
 
   it('throws an error if an incorrect BNF grammar is fed', () => {
-    expect(() => lexBnf(testGrammar, false)).toThrow();
+    expect(() => lexBnf(testGrammar)).toThrow();
   });
 
   it('parses the given BNF grammar to 4 productions', () => {
-    const res2 = lexBnf(testBnf, false);
+    const res2 = lexBnf(testBnf);
     const res3 = parseBnf(res2, false);
     expect(res3.length).toBe(4);
     expect(res3[0].expr.length).toBe(3);
@@ -48,23 +90,23 @@ describe('Parsing BNF and EBNF syntax', () => {
   });
 
   it('parses EBNF grammar', () => {
-    expect(lexBnf(testGrammar, true).length).toBeGreaterThan(0);
+    expect(lexEbnf(testGrammar).length).toBeGreaterThan(0);
   });
 
   it('throws an error if an incorrect EBNF grammar is fed', () => {
-    const lexRes = lexBnf(testGrammar + '= = = = = = = =', true);
+    const lexRes = lexEbnf(testGrammar + '= = = = = = = =');
     expect(() => parseEbnf(lexRes)).toThrow();
   });
 
   it('parses correct EBNF grammar with grouping, optional, and repetition', () => {
-    const ebnf = parseEbnf(lexBnf('E = E (E) * 2 [E] {E} * 3 | F', true));
+    const ebnf = parseEbnf(lexEbnf('E = E (E) * 2 [E] {E} * 3 | F'));
     const bnf = convertEbnfToBnf(ebnf);
     expect(bnf.filter(x => hasIdentifier(x.expr, 'F')).length).toBeGreaterThan(0);
   });
 
   describe('EBNF Optional Elements', () => {
     it('converts optional element [X] to two productions', () => {
-      const ebnf = parseEbnf(lexBnf('S = A [B] C', true));
+      const ebnf = parseEbnf(lexEbnf('S = A [B] C'));
       const bnf = convertEbnfToBnf(ebnf);
       // Should generate: S = A C | S = A B C
       expect(bnf.length).toBeGreaterThan(1);
@@ -75,7 +117,7 @@ describe('Parsing BNF and EBNF syntax', () => {
     });
 
     it('handles nested optional elements', () => {
-      const ebnf = parseEbnf(lexBnf('S = A [B [C]]', true));
+      const ebnf = parseEbnf(lexEbnf('S = A [B [C]]'));
       const bnf = convertEbnfToBnf(ebnf);
       // Should generate multiple productions for different combinations
       expect(bnf.length).toBeGreaterThan(1);
@@ -84,7 +126,7 @@ describe('Parsing BNF and EBNF syntax', () => {
 
   describe('EBNF Repetition', () => {
     it('converts repetition {X} to recursive production', () => {
-      const ebnf = parseEbnf(lexBnf('S = A {B}', true));
+      const ebnf = parseEbnf(lexEbnf('S = A {B}'));
       const bnf = convertEbnfToBnf(ebnf);
       // Should generate auxiliary production for repetition
       expect(bnf.length).toBeGreaterThan(1);
@@ -93,7 +135,7 @@ describe('Parsing BNF and EBNF syntax', () => {
     });
 
     it('handles repetition with multiple elements', () => {
-      const ebnf = parseEbnf(lexBnf('S = {A B}', true));
+      const ebnf = parseEbnf(lexEbnf('S = {A B}'));
       const bnf = convertEbnfToBnf(ebnf);
       expect(bnf.length).toBeGreaterThan(0);
     });
@@ -101,7 +143,7 @@ describe('Parsing BNF and EBNF syntax', () => {
 
   describe('EBNF Grouping', () => {
     it('converts grouped alternatives (A | B) to multiple productions', () => {
-      const ebnf = parseEbnf(lexBnf('S = X (A | B) Y', true));
+      const ebnf = parseEbnf(lexEbnf('S = X (A | B) Y'));
       const bnf = convertEbnfToBnf(ebnf);
       // Should expand to: S = X A Y | S = X B Y
       expect(bnf.length).toBe(2);
@@ -110,7 +152,7 @@ describe('Parsing BNF and EBNF syntax', () => {
     });
 
     it('handles grouped sequences', () => {
-      const ebnf = parseEbnf(lexBnf('S = (A B) C', true));
+      const ebnf = parseEbnf(lexEbnf('S = (A B) C'));
       const bnf = convertEbnfToBnf(ebnf);
       expect(bnf.length).toBeGreaterThan(0);
       expect(bnf[0].expr.length).toBeGreaterThan(2);
@@ -119,7 +161,7 @@ describe('Parsing BNF and EBNF syntax', () => {
 
   describe('EBNF Multiplication', () => {
     it('converts element * 2 to repeated sequence', () => {
-      const ebnf = parseEbnf(lexBnf('S = A * 2', true));
+      const ebnf = parseEbnf(lexEbnf('S = A * 2'));
       const bnf = convertEbnfToBnf(ebnf);
       expect(bnf.length).toBeGreaterThan(0);
       // Should have A appearing twice in the expression
@@ -128,14 +170,14 @@ describe('Parsing BNF and EBNF syntax', () => {
     });
 
     it('converts element * 3 to triple sequence', () => {
-      const ebnf = parseEbnf(lexBnf('S = B * 3', true));
+      const ebnf = parseEbnf(lexEbnf('S = B * 3'));
       const bnf = convertEbnfToBnf(ebnf);
       const bCount = bnf[0].expr.filter(e => !e.isEbnf && e.value === 'B').length;
       expect(bCount).toBe(3);
     });
 
     it('handles group multiplication', () => {
-      const ebnf = parseEbnf(lexBnf('S = (A B) * 2', true));
+      const ebnf = parseEbnf(lexEbnf('S = (A B) * 2'));
       const bnf = convertEbnfToBnf(ebnf);
       expect(bnf.length).toBeGreaterThan(0);
     });
@@ -143,13 +185,13 @@ describe('Parsing BNF and EBNF syntax', () => {
 
   describe('EBNF Complex Combinations', () => {
     it('handles optional with multiplication', () => {
-      const ebnf = parseEbnf(lexBnf('S = A [B] * 2', true));
+      const ebnf = parseEbnf(lexEbnf('S = A [B] * 2'));
       const bnf = convertEbnfToBnf(ebnf);
       expect(bnf.length).toBeGreaterThan(0);
     });
 
     it('handles nested grouping with alternatives', () => {
-      const ebnf = parseEbnf(lexBnf('S = A (B | C | D) E', true));
+      const ebnf = parseEbnf(lexEbnf('S = A (B | C | D) E'));
       const bnf = convertEbnfToBnf(ebnf);
       expect(bnf.length).toBe(3);
       expect(bnf.some(p => hasIdentifier(p.expr, 'B'))).toBe(true);
@@ -158,13 +200,13 @@ describe('Parsing BNF and EBNF syntax', () => {
     });
 
     it('handles multiple EBNF constructs in one rule', () => {
-      const ebnf = parseEbnf(lexBnf('S = A [B] (C | D) {E}', true));
+      const ebnf = parseEbnf(lexEbnf('S = A [B] (C | D) {E}'));
       const bnf = convertEbnfToBnf(ebnf);
       expect(bnf.length).toBeGreaterThan(0);
     });
 
     it('handles the complex test grammar', () => {
-      const ebnf = parseEbnf(lexBnf(testGrammar, true));
+      const ebnf = parseEbnf(lexEbnf(testGrammar));
       const bnf = convertEbnfToBnf(ebnf);
       expect(bnf.length).toBeGreaterThan(0);
       // Check that stmt and expr productions exist
@@ -175,21 +217,21 @@ describe('Parsing BNF and EBNF syntax', () => {
 
   describe('EBNF Edge Cases', () => {
     it('handles empty production', () => {
-      const ebnf = parseEbnf(lexBnf('S = ', true));
+      const ebnf = parseEbnf(lexEbnf('S = '));
       const bnf = convertEbnfToBnf(ebnf);
       expect(bnf.length).toBe(1);
       expect(bnf[0].expr.length).toBe(0);
     });
 
     it('handles single terminal', () => {
-      const ebnf = parseEbnf(lexBnf('S = A', true));
+      const ebnf = parseEbnf(lexEbnf('S = A'));
       const bnf = convertEbnfToBnf(ebnf);
       expect(bnf.length).toBe(1);
       expect(bnf[0].expr.length).toBe(1);
     });
 
     it('handles multiple alternatives without EBNF constructs', () => {
-      const ebnf = parseEbnf(lexBnf('S = A | B | C', true));
+      const ebnf = parseEbnf(lexEbnf('S = A | B | C'));
       const bnf = convertEbnfToBnf(ebnf);
       expect(bnf.length).toBe(3);
     });

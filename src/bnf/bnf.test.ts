@@ -2,8 +2,9 @@
  * @fileoverview Tests for BNF and EBNF parsing functionality.
  */
 
+import { lexEbnf } from '../ebnf/ebnf';
 import { lexBnf, parseBnf } from './bnf';
-import { BnfElement } from './types';
+
 describe('lexBnf', () => {
   describe('BNF mode', () => {
     it('should tokenize simple BNF production', () => {
@@ -53,44 +54,6 @@ describe('lexBnf', () => {
 
     it('should throw on unknown token', () => {
       expect(() => lexBnf('<expr> ::= @invalid')).toThrow('Unknown token');
-    });
-  });
-
-  describe('EBNF mode', () => {
-    it('should tokenize EBNF with repetition', () => {
-      const tokens = lexBnf('<list> ::= <item> { "," <item> }', true);
-
-      const braces = tokens.filter(t => t.name === 'CB_L' || t.name === 'CB_R');
-      expect(braces).toHaveLength(2);
-    });
-
-    it('should handle optional elements', () => {
-      const tokens = lexBnf('<item> ::= <val> [ "optional" ]', true);
-
-      const brackets = tokens.filter(t => t.name === 'SB_L' || t.name === 'SB_R');
-      expect(brackets).toHaveLength(2);
-    });
-
-    it('should handle grouping', () => {
-      const tokens = lexBnf('<expr> ::= ( <a> | <b> ) <c>', true);
-
-      const parens = tokens.filter(t => t.name === 'RB_L' || t.name === 'RB_R');
-      expect(parens).toHaveLength(2);
-    });
-
-    it('should handle numbers', () => {
-      const tokens = lexBnf('<repeat> ::= 3 * <item>', true);
-
-      const numberToken = tokens.find(t => t.name === 'NON_NEG_INTEGER');
-      expect(numberToken).toBeDefined();
-      expect(numberToken!.value.type).toBe('number');
-      expect((numberToken!.value as BnfElement).value).toBe(3);
-    });
-
-    it('should handle question mark', () => {
-      const tokens = lexBnf('<optional> ::= <item>?', true);
-
-      expect(tokens.some(t => t.name === 'QUES')).toBe(true);
     });
   });
 
@@ -191,7 +154,7 @@ describe('parseBnf', () => {
 
   describe('Error handling', () => {
     it('should throw on non-BNF tokens', () => {
-      const tokens = lexBnf('<expr> ::= <term> { <item> }', true);
+      const tokens = lexEbnf('<expr> ::= <term> { <item> }');
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       expect(() => parseBnf(tokens as any)).toThrow('Non-BNF token');

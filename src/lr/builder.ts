@@ -1,12 +1,13 @@
 import { lexBnf, parseBnf } from "../bnf/bnf";
 import { lexAbnf, parseAbnf } from "../bnf/abnf";
-import { convertEbnfToBnf } from "../ebnf/ebnf";
+import { convertEbnfToBnf, lexEbnf } from "../ebnf/ebnf";
 import { ParserError } from "./error";
-import { BnfElement, ComplexProduction, EbnfElement, SimpleProduction } from "../bnf/types";
+import { BnfElement, SimpleProduction } from "../bnf/types";
 import { GrammarDefinition, OperatorDefinition, ProductionHandler } from "./types";
 import { Token } from "../lexer/types";
 import { LRGenerator, ParsedGrammar } from "./generator";
 import { serializeFunction, deserializeFunction, SerializeOptions, DeserializeOptions, SerializedFunction } from "../utils/serializer";
+import { EbnfElement, ComplexProduction } from "../ebnf/types";
 
 export interface GrammarBuildingOptions {
   moduleName?: string,
@@ -141,7 +142,7 @@ export class LRGrammarBuilder {
   ) {
     // normalize prod to array
     if (typeof (prods) == 'string' || prods instanceof String)
-      prods = parseBnf(lexBnf(prods as string, false));
+      prods = parseBnf(lexBnf(prods as string));
     // .map(x => [x.name, x.expr, undefined]);
     else if (!(prods instanceof Array))
       prods = [prods as SimpleProduction];
@@ -181,7 +182,7 @@ export class LRGrammarBuilder {
     if (typeof (prods) == 'string' || prods instanceof String) {
       if (this.parseEbnf == undefined)
         throw new ParserError('No EBNF parser is registered in this builder instance.');
-      prods = this.parseEbnf(lexBnf(prods as string, true));
+      prods = this.parseEbnf(lexEbnf(prods as string));
     }
     // .map(x => [x.name, x.expr, undefined]);
     else if (!(prods instanceof Array))

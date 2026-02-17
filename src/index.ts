@@ -1,5 +1,6 @@
 import { lexBnf, parseBnf } from './bnf/bnf';
 import { lexAbnf, parseAbnf } from './bnf/abnf';
+import { lexEbnf } from './ebnf/ebnf';
 import { parseEbnf } from './ebnf/ebnf-parser';
 
 import { LexerBuilder } from './lexer/builder';
@@ -22,6 +23,7 @@ export {
   parseBnf,
   lexAbnf,
   parseAbnf,
+  lexEbnf,
   parseEbnf,
   convertEbnfToBnf,
   compileActionRecord,

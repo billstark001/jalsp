@@ -1,10 +1,18 @@
 
 // EBNF elements
 
-import { EbnfElement, SimpleProduction, ComplexProduction, BnfElement, ComplexExpression } from "../bnf/types";
+import { EBNF_SET } from "../bnf/syntax";
+import { SimpleProduction, BnfElement } from "../bnf/types";
+import { tokenize } from "../bnf/utils";
+import { Token } from "../lexer/types";
 import { getIncrementName } from "../lexer/utils";
 import '../utils/array-extension';
+import { EbnfElement, ComplexProduction, ComplexExpression } from "./types";
 
+
+export function lexEbnf(grammar: string): Token<BnfElement | EbnfElement>[] {
+  return tokenize(grammar, EBNF_SET);
+}
 
 // conversion
 

@@ -1,9 +1,10 @@
-import { EbnfElement, ComplexProduction, BnfElement, ComplexExpression } from "../bnf/types";
+import { BnfElement } from "../bnf/types";
 import { Position, Token, TokenStream } from "../lexer/types";
 import { LRGrammarBuilder } from "../lr/builder";
 import { LRGenerator } from "../lr/generator";
 import { Parser } from "../lr/parser";
 import { DEFAULT_EOF_TOKEN } from "../lexer/lexer";
+import { EbnfElement, ComplexExpression, ComplexProduction } from "./types";
 
 const ebnf = new LRGrammarBuilder()
 

@@ -1,13 +1,10 @@
 import { Token } from '../lexer/types';
-import { BnfElement, SimpleProduction, EbnfElement } from './types';
-import { BNF_SET, EBNF_SET, P_NON_COMMA, P_COMMA, P_SPACE } from './syntax';
+import { BnfElement, SimpleProduction } from './types';
+import { BNF_SET, P_NON_COMMA, P_COMMA, P_SPACE } from './syntax';
 import { tokenize, mergeBnfElements } from './utils';
 
-export function lexBnf(grammar: string, ebnf?: false): Token<BnfElement>[];
-export function lexBnf(grammar: string, ebnf: true): Token<BnfElement | EbnfElement>[];
-
-export function lexBnf(grammar: string, ebnf = false): Token<BnfElement>[] | Token<BnfElement | EbnfElement>[] {
-  return tokenize(grammar, ebnf ? EBNF_SET : BNF_SET);
+export function lexBnf(grammar: string): Token<BnfElement>[] {
+  return tokenize(grammar, BNF_SET);
 }
 
 function formatTokens(tokens: Token<BnfElement>[], commaSeparate: boolean): string {
