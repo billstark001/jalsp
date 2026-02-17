@@ -1,8 +1,8 @@
 
 
-import { lexBnf, parseBnf } from "../jalsp/ebnf/bnf";
-import { convertToBnf } from "../jalsp/ebnf/ebnf";
-import parseEbnf from '../jalsp/ebnf/ebnf_parser';
+import { lexBnf, parseBnf } from "./bnf";
+import { convertToBnf } from "./ebnf";
+import parseEbnf from './ebnf_parser';
 
 const testGrammar = `
 
@@ -43,7 +43,7 @@ describe('Parsing BNF and EBNF syntax', () => {
 
   it('throws an error if an incorrect EBNF grammar is fed', () => {
     const lexRes = lexBnf(testGrammar + '= = = = = = = =', true);
-    expect(() => parseEbnf(lexRes)).toThrowError();
+    expect(() => parseEbnf(lexRes)).toThrow();
   });
 
   it('parses correct EBNF grammar', () => {
@@ -51,7 +51,7 @@ describe('Parsing BNF and EBNF syntax', () => {
     var bnf = convertToBnf(ebnf);
     expect(bnf.filter(x => x.expr.indexOf('F') >= 0).length).toBe(1);
   })
-
+ 
 });
 
 

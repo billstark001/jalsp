@@ -1,6 +1,5 @@
 import { IEquatable } from "../utils/equatable";
-import { eps, GSymbol } from "./symbol";
-
+import { GSymbol } from "./symbol";
 
 export class Production implements IEquatable {
 
@@ -14,7 +13,7 @@ export class Production implements IEquatable {
     this.body = body;
     this.dot = -1;
   }
-  equals(obj: any): boolean {
+  equals(obj: unknown): boolean {
     if (!(obj instanceof Production))
       return false;
     if (this === obj)
@@ -43,15 +42,12 @@ export class Production implements IEquatable {
   getItems() {
 
     if (this.items === undefined) {
-      var self = this;
-      self.items = Array.from(Array(self.body.length + 1).keys()).map(function (i) {
-        return new GItem(self, i);
+      this.items = Array.from(Array(this.body.length + 1).keys()).map((i) => {
+        return new GItem(this, i);
       });
     }
     return this.items!;
   }
-
-
 
 }
 
@@ -112,7 +108,8 @@ export class LR1Item implements IEquatable {
     return '[' + this.item.toString() + ', ' + this.lookahead.toString() + ']';
   }
 
-  equals(other: any) {
+  equals(other: unknown) {
+    if (!(other instanceof LR1Item)) return false;
     return this.item.equals(other.item) && this.lookahead.equals(other.lookahead);
   }
 

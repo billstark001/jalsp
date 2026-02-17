@@ -1,3 +1,4 @@
+import { DEFAULT_EOF_TOKEN } from "../models/constants";
 import { LexerError } from "../models/error";
 import { Token, TokenDefinition, TokenHandler, TokenNameSelector, TokenStream } from "../models/token";
 import { getLCIndex, getLinePositions, Position } from "../utils/str";
@@ -32,7 +33,7 @@ export default class Lexer implements TokenStream {
     this.records = [];
     this.str = undefined;
     this.pos = 0;
-    this.eof = eofToken ?? '<<EOF>>';
+    this.eof = eofToken || DEFAULT_EOF_TOKEN;
 
     for (const rec of records) {
       const { name, pattern, isRegExp, flags, handlerIndex } = rec;

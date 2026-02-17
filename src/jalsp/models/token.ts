@@ -1,4 +1,5 @@
 import { Position } from "../utils/str";
+import { DEFAULT_EOF_TOKEN } from "./constants";
 
 /**
  * if undefined is returned, the token is ignored
@@ -12,19 +13,19 @@ export type TokenHandler = (
 
 
 
-export interface Token {
+export interface Token<T = string> {
   name: string,
 
-  lexeme?: string,
-  value?: any,
+  lexeme: string,
+  value: T,
 
   position?: number,
   pos?: Position,
 }
 
-export interface TokenStream {
-  nextToken(): Token,
-  isEOF(t: Token): boolean,
+export interface TokenStream<T = string> {
+  nextToken(): Token<T>,
+  isEOF(t: Token<T>): boolean,
   currentPosition(): number,
   currentFilePosition(): Position;
 }
@@ -55,7 +56,7 @@ export class WrappedTokenArray implements TokenStream {
   constructor(tokens: Token[], eof?: string) {
     this.tokens = tokens;
     this.pos = 0;
-    this.eof = EOF(eof || '<<EOF>>');
+    this.eof = EOF(eof || DEFAULT_EOF_TOKEN);
   }
   nextToken(): Token {
     if (this.pos >= this.tokens.length)

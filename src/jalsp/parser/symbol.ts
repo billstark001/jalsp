@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { DEFAULT_EOF_TOKEN } from "../models/constants";
 import { IEquatable } from "../utils/equatable";
 
 
@@ -110,5 +113,5 @@ export function isNonTerminal(e: any) {
 }
 
 export const eps = new EpsilonSymbol();
-export const eof = new T('<<EOF>>');
+export const eof = new T(DEFAULT_EOF_TOKEN);
 export const EOFNUM = 0;

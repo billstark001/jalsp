@@ -1,0 +1,1 @@
+export const DEFAULT_EOF_TOKEN = '<<EOF>>';

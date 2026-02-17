@@ -1,7 +1,7 @@
-import LRGrammarBuilder from '../jalsp/parser/builder';
-import RegExpLexerBuilder from '../jalsp/lexer/builder';
-import { eof } from '../jalsp/parser/symbol';
-import { newParser } from '..';
+import LRGrammarBuilder from './builder';
+import RegExpLexerBuilder from '../lexer/builder';
+import { eof } from './symbol';
+import { newParser } from '../..';
 
 
 var lexerAmb = new RegExpLexerBuilder()

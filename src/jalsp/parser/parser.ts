@@ -1,12 +1,12 @@
 import { stringifyToken, Token, TokenStream } from "../models/token";
-import { AutomatonActionRecord, ProductionHandler } from "../models/grammar";
+import { AutomatonActionRecord, BnfElement, ProductionHandler } from "../models/grammar";
 import { GSymbol } from "./symbol";
 import { ParsedGrammar } from "./generator";
 import { ParserError } from "../models/error";
 
 export interface ParserStackItem {
   s: number,
-  i?: Token
+  i?: Token<BnfElement>
 }
 
 
@@ -27,8 +27,8 @@ export default class Parser<T> {
 
   // runtime
 
-  stream?: TokenStream;
-  a?: Token;
+  stream?: TokenStream<BnfElement>;
+  a?: Token<BnfElement>;
   an?: number;
   accepted: boolean = false;
   inError: boolean = false;
@@ -86,7 +86,7 @@ export default class Parser<T> {
    * @param context 
    * @returns 
    */
-  parse(stream: TokenStream, context?: T) {
+  parse(stream: TokenStream<BnfElement>, context?: T) {
     this.stack = [];
     this.context = context;
 
@@ -161,7 +161,7 @@ export default class Parser<T> {
     this.accepted = true;
   }
 
-  error(token: Token | string) {
+  error(token: Token<BnfElement> | string) {
 
     if (typeof token === 'string') {
       throw new ParserError(token);

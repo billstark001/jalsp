@@ -1,4 +1,4 @@
-import * as J from '../index';
+import * as J from '../../index';
 
 var weirdLex = J.newLexer()
   .t(() => undefined, / +/)

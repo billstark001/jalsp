@@ -1,5 +1,3 @@
-import { Token } from "./token";
-
 export class LexerError extends Error {
 
   additional?: any;

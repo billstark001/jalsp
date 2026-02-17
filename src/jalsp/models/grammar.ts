@@ -1,5 +1,4 @@
 import { Production } from "../parser/instrument";
-import { GSymbol } from "../parser/symbol";
 
 export type ProductionHandler = (...args: any[]) => (any | undefined);
 
@@ -13,40 +12,43 @@ export interface ProductionHandlerModifier {
   [2]: number[] // opr params
 }
 
+// bnf expressions
+
+export type ComplexExpression = (BnfElement | EbnfElement)[];
+export type SimpleExpression = BnfElement[];
+
+export type BnfElement = ({
+  type: 'literal' | 'identifier';
+  value: string;
+} | {
+  type: 'number',
+  value: number;
+}) & {
+  isEbnf?: false;
+};
 
 
-export interface EbnfElement {
-  isEbnf: true;
+export type EbnfElement = ({
   type:
   'optional' |
   'repeat' |
-  'group' |
+  'group' | 
   'mult'; // string literal with a mult sign
-  productionList: (string | EbnfElement)[][];
   mult?: number;
-}
-/*
-export interface ComplexProduction {
-  name: string;
-  expr: (string | EbnfElement)[][];
-}
-
-export interface SimpleProduction {
-  [0]: string;
-  [1]: string[];
-  [2]?: ProductionHandler;
-}
-*/
+}) & {
+  isEbnf: true;
+  productionList: ComplexExpression[];
+};
 
 export interface ComplexProduction {
   name: string;
-  expr: (string | EbnfElement)[];
+  expr: ComplexExpression;
   action?: number | ProductionHandlerModifier;
 }
 
 export interface SimpleProduction {
   name: string;
-  expr: string[];
+  expr: SimpleExpression;
   action?: number | ProductionHandlerModifier;
 }
 
