@@ -45,13 +45,27 @@ class CliExecutionError extends Error {
   }
 }
 
-/** Run the compiled CLI binary (dist/index.js) via Node. */
-function runCli(args: string[], cwd = ROOT): { stdout: string; stderr: string } {
-  const result = spawnSync(
-    process.execPath,
-    [join(ROOT, 'dist', 'index.js'), ...args],
-    { cwd, encoding: 'utf8' },
-  );
+interface CliExecutionResult {
+  stdout: string;
+  stderr: string;
+  useSource: boolean;
+}
+/** Run the CLI via tsx (directly from source) or the compiled binary if available. */
+function runCli(args: string[], cwd = ROOT): CliExecutionResult {
+  // Try dist/index.js first (if built), otherwise use tsx to run src/index.ts
+  const distPath = join(ROOT, 'dist', 'index.js');
+  const srcPath = join(ROOT, 'src', 'index.ts');
+
+  const useSource = !existsSync(distPath);
+
+  let result;
+  if (useSource) {
+    // Use npx to run tsx with the source TypeScript file
+    result = spawnSync('npx', ['tsx', srcPath, ...args], { cwd, encoding: 'utf8' });
+  } else {
+    // Use node to run the compiled JavaScript file
+    result = spawnSync(process.execPath, [distPath, ...args], { cwd, encoding: 'utf8' });
+  }
 
   const stdout = result.stdout ?? '';
   const stderr = result.stderr ?? '';
@@ -66,7 +80,7 @@ function runCli(args: string[], cwd = ROOT): { stdout: string; stderr: string } 
     );
   }
 
-  return { stdout, stderr };
+  return { stdout, stderr, useSource };
 }
 
 /** Build a fresh arithmetic lexer (used in multiple tests). */
