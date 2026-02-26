@@ -31,3 +31,10 @@ export {
 
 export type * from './lexer/types';
 export type * from './lr/types';
+export type { GrammarBuildingOptions, SerializedGrammarBuilder } from './lr/builder';
+export type { SerializedLexerBuilder } from './lexer/builder';
+
+export { generateLexerModule, generateParserModule } from './codegen';
+export type { ModuleGenOptions } from './codegen';
+export type { SerializedLexer } from './lexer/lexer';
+export type { SerializedParser } from './lr/parser';
