@@ -1,10 +1,21 @@
 import { Token, TokenStream } from "../lexer/types";
 import { ProductionHandler } from "./types";
 import { AutomatonActionRecord } from "./types";
-import { GSymbol } from "./utils-obj";
+import { GSymbol, NT, T } from "./utils-obj";
 import { ParsedGrammar } from "./generator";
 import { ParserError } from "./error";
 import { getTokenString } from "../lexer/utils";
+import { serializeFunction, deserializeFunction, SerializeOptions, DeserializeOptions, SerializedFunction } from '../utils/serializer';
+
+export interface SerializedParser {
+  action: { [id: number]: AutomatonActionRecord[] };
+  goto: { [id: number]: number[] };
+  actionMode: string;
+  actions: Array<SerializedFunction | undefined>;
+  startState: number;
+  symbols: Array<{ name: string; isNT: boolean }>;
+  symbolsTable: { [name: string]: number };
+}
 
 export interface ParserStackItem<T> {
   s: number,
@@ -165,5 +176,56 @@ export class Parser<TToken, TContext = any, TResult = TToken> {
       throw new ParserError(`Unexpected token ${getTokenString(token)} (Stack state: ${stop})`);
     }
 
+  }
+
+  serialize(options?: SerializeOptions): SerializedParser {
+    return {
+      action: this.action,
+      goto: this.goto,
+      actionMode: this.actionMode,
+      actions: this.actions.map(a => a ? serializeFunction(a, options) : undefined),
+      startState: this.startState,
+      symbols: this.symbols.map(s => ({
+        name: s.name,
+        isNT: s instanceof NT,
+      })),
+      symbolsTable: this.symbolsTable,
+    };
+  }
+
+  toJSON(options?: SerializeOptions): string {
+    return JSON.stringify(this.serialize(options));
+  }
+
+  static deserialize<TToken = unknown, TContext = unknown, TResult = TToken>(
+    serialized: SerializedParser,
+    options?: DeserializeOptions
+  ): Parser<TToken, TContext, TResult> {
+    const symbols: GSymbol[] = serialized.symbols.map(s =>
+      s.isNT ? new NT(s.name) : new T(s.name)
+    );
+    const actions = serialized.actions.map(a =>
+      a ? deserializeFunction(a, options) as ProductionHandler<TToken, TResult> : undefined
+    );
+    const parsedGrammar: ParsedGrammar = {
+      action: serialized.action,
+      goto: serialized.goto,
+      actionMode: serialized.actionMode,
+      actions,
+      startState: serialized.startState,
+      symbols,
+      symbolsTable: serialized.symbolsTable,
+    };
+    return new Parser<TToken, TContext, TResult>(parsedGrammar);
+  }
+
+  static fromJSON<TToken = unknown, TContext = unknown, TResult = TToken>(
+    json: string,
+    options?: DeserializeOptions
+  ): Parser<TToken, TContext, TResult> {
+    return Parser.deserialize<TToken, TContext, TResult>(
+      JSON.parse(json) as SerializedParser,
+      options
+    );
   }
 }

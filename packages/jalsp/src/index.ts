@@ -31,3 +31,8 @@ export {
 
 export type * from './lexer/types';
 export type * from './lr/types';
+
+export { generateLexerModule, generateParserModule } from './codegen';
+export type { ModuleGenOptions } from './codegen';
+export type { SerializedLexer } from './lexer/lexer';
+export type { SerializedParser } from './lr/parser';

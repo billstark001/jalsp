@@ -4,8 +4,25 @@ import {
   Token, TokenHandler, TokenNameSelector, TokenStream,
   LexerPositionOptions,
   LexerOptions,
+  ActionRecord,
+  TokenRecord,
 } from "./types";
 import { getLCIndex, getLinePositions } from "./utils";
+import { serializeFunction, deserializeFunction, SerializeOptions, DeserializeOptions, SerializedFunction } from '../utils/serializer';
+
+export interface SerializedLexer {
+  records: Array<{
+    name: string;
+    pattern: string;
+    flags?: string;
+    isRegExp?: boolean;
+    handler: SerializedFunction;
+    nameSelector?: SerializedFunction;
+  }>;
+  eofName: string;
+  eofValue: unknown;
+  dummyHandler: SerializedFunction;
+}
 
 interface LexerRecord<T> {
   name: string;
@@ -202,6 +219,60 @@ export class Lexer<T> implements TokenStream<T> {
     if (this.rec == undefined)
       this.rec = getLinePositions(this.str);
     return getLCIndex(this.rec, this.pos, true);
+  }
+
+  serialize(options?: SerializeOptions): SerializedLexer {
+    return {
+      records: this.records.map(rec => ({
+        name: rec.name,
+        pattern: rec.pat instanceof RegExp ? rec.pat.source : rec.pat,
+        flags: rec.pat instanceof RegExp ? rec.pat.flags : undefined,
+        isRegExp: rec.pat instanceof RegExp ? true : undefined,
+        handler: serializeFunction(rec.f, options),
+        nameSelector: rec.n ? serializeFunction(rec.n, options) : undefined,
+      })),
+      eofName: this.eofName,
+      eofValue: this.eofValue,
+      dummyHandler: serializeFunction(this.dummyHandler, options),
+    };
+  }
+
+  toJSON(options?: SerializeOptions): string {
+    return JSON.stringify(this.serialize(options));
+  }
+
+  static deserialize<T = string>(
+    serialized: SerializedLexer,
+    options?: DeserializeOptions
+  ): Lexer<T> {
+    const dummyHandler = deserializeFunction(serialized.dummyHandler, options) as TokenHandler<T>;
+    const actions: ActionRecord<T>[] = serialized.records.map(rec => ({
+      handler: deserializeFunction(rec.handler, options) as TokenHandler<T>,
+      nameSelector: rec.nameSelector
+        ? deserializeFunction(rec.nameSelector, options) as TokenNameSelector<T>
+        : undefined,
+    }));
+    const records: TokenRecord[] = serialized.records.map((rec, i) => ({
+      name: rec.name,
+      pattern: rec.pattern,
+      flags: rec.flags,
+      isRegExp: rec.isRegExp,
+      handlerIndex: i,
+    }));
+    return new Lexer<T>({
+      actions,
+      records,
+      eofName: serialized.eofName,
+      eofValue: serialized.eofValue as T,
+      dummyHandler,
+    });
+  }
+
+  static fromJSON<T = string>(
+    json: string,
+    options?: DeserializeOptions
+  ): Lexer<T> {
+    return Lexer.deserialize<T>(JSON.parse(json) as SerializedLexer, options);
   }
 
 }

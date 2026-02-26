@@ -8,7 +8,28 @@ interface RegexDict {
 
 export function handleSingleQuoteString(str: string): string {
   if (str.length < 2) throw new Error('Invalid single-quoted string');
-  return '"' + str.slice(1, -1).replace(/\\'/g, "'").replace(/"/g, '\\"') + '"';
+  const inner = str.slice(1, -1);
+  let result = '';
+  let i = 0;
+  while (i < inner.length) {
+    const ch = inner[i];
+    if (ch === '\\' && i + 1 < inner.length) {
+      const next = inner[i + 1];
+      if (next === "'") {
+        result += "'"; // unescape \' → '
+      } else {
+        result += '\\' + next; // keep all other escape sequences intact
+      }
+      i += 2;
+    } else if (ch === '"') {
+      result += '\\"'; // escape bare double-quote
+      i++;
+    } else {
+      result += ch;
+      i++;
+    }
+  }
+  return '"' + result + '"';
 }
 
 export function createToken(

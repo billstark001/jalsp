@@ -50,6 +50,182 @@ TBD
 
 ------
 
+## Serialization & Deserialization
+
+Both `Lexer` and `Parser` support serialization to JSON and reconstruction from JSON.
+
+### Lexer Serialization
+
+```typescript
+import { LexerBuilder, Lexer } from 'jalsp';
+
+const lexer = new LexerBuilder()
+  .t('NUM', /[0-9]+/, (s) => parseInt(s))
+  .t('PLUS', '+')
+  .t(null, /\s+/)
+  .build();
+
+// Serialize to JSON string
+const json = lexer.toJSON();
+
+// Reconstruct from JSON
+const restored = Lexer.fromJSON(json);
+restored.reset('1 + 2');
+```
+
+### Parser Serialization
+
+```typescript
+import { LRGrammarBuilder, Parser } from 'jalsp';
+
+const parsedGrammar = new LRGrammarBuilder()
+  .bnf('E = E "+" T', (e, _, t) => e + t)
+  .bnf('E = T')
+  .bnf('T = NUM', Number)
+  .opr('left', '+')
+  .build({ eofToken: 'EOF' });
+
+const parser = new Parser(parsedGrammar);
+
+// Serialize to JSON string
+const json = parser.toJSON();
+
+// Reconstruct from JSON
+const restored = Parser.fromJSON(json);
+```
+
+### `serialize` / `deserialize` methods
+
+The lower-level `serialize()` / `Lexer.deserialize()` / `Parser.deserialize()` methods work with plain objects (`SerializedLexer` / `SerializedParser`) for use-cases where you manage JSON encoding yourself.
+
+------
+
+## Module Code Generation
+
+Generate a self-contained ES module that can be used as a rollup/bundler entry point:
+
+```typescript
+import { LexerBuilder, LRGrammarBuilder, Parser, generateLexerModule, generateParserModule } from 'jalsp';
+
+// Generate lexer module
+const lexer = new LexerBuilder()
+  .t('NUM', /[0-9]+/)
+  .t('PLUS', '+')
+  .build();
+
+const lexerModuleCode = generateLexerModule(lexer);
+// -> "import { Lexer } from 'jalsp';\nconst _lexerData = ...;\nexport const lexer = Lexer.deserialize(...);"
+
+// Generate parser module
+const parsedGrammar = new LRGrammarBuilder()
+  .bnf('E = E "+" T | T')
+  .bnf('T = NUM')
+  .build();
+const parser = new Parser(parsedGrammar);
+
+const parserModuleCode = generateParserModule(parser);
+
+// Options
+const code = generateLexerModule(lexer, {
+  importFrom: 'jalsp',    // which package to import from (default: 'jalsp')
+  exportName: 'myLexer',  // export variable name (default: 'lexer')
+  exportData: false,      // also export raw serialized data (default: false)
+});
+```
+
+------
+
+## `jalsp-cli`
+
+The `jalsp-cli` package provides a command-line tool to compile and bundle lexers/parsers.
+
+### Installation
+
+```bash
+pnpm add -D jalsp-cli
+# or globally:
+pnpm add -g jalsp-cli
+```
+
+### Entry File Format
+
+Create an ESM JavaScript or TypeScript file that exports a `LexerBuilder` or `LRGrammarBuilder`:
+
+```typescript
+// my-lexer.ts
+import { LexerBuilder } from 'jalsp';
+
+const builder = new LexerBuilder()
+  .t('NUM', /[0-9]+/, (s) => parseInt(s))
+  .t('PLUS', '+')
+  .t(null, /\s+/);
+
+export default builder;
+```
+
+```typescript
+// my-parser.ts
+import { LRGrammarBuilder } from 'jalsp';
+
+const builder = new LRGrammarBuilder()
+  .bnf('E = E "+" T | T', (e, _, t) => e + t)
+  .bnf('T = NUM', Number)
+  .opr('left', '+');
+
+export default builder;
+```
+
+### `serialize` command — Output JSON
+
+Compile a builder to its serialized JSON representation:
+
+```bash
+# Serialize a lexer (reads default export)
+jalsp-cli serialize lexer my-lexer.ts -o lexer.json
+
+# Serialize a parser (named export, custom EOF token)
+jalsp-cli serialize parser my-parser.ts --export myParser --eof EOF -o parser.json
+
+# Print to stdout
+jalsp-cli serialize lexer my-lexer.ts
+```
+
+**Options:**
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-e, --export <name>` | Export name from the file | `default` |
+| `-o, --output <file>` | Output file path | stdout |
+| `--eof <token>` | EOF token name (parser only) | `<<EOF>>` |
+| `--start <symbol>` | Start symbol (parser only) | first production head |
+
+### `bundle` command — Output bundled JS
+
+Compile a builder and bundle everything (including jalsp runtime + handlers) into a single minified JS file:
+
+```bash
+# Bundle a lexer
+jalsp-cli bundle lexer my-lexer.ts -o dist/ --out-name my-lexer
+
+# Bundle a parser
+jalsp-cli bundle parser my-parser.ts -o dist/ --out-name my-parser --eof EOF
+```
+
+**Options:**
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-e, --export <name>` | Export name from the file | `default` |
+| `-o, --output <dir>` | Output directory | `./dist` |
+| `--out-name <name>` | Base name for output files | `compiled` |
+| `--eof <token>` | EOF token name (parser only) | `<<EOF>>` |
+| `--start <symbol>` | Start symbol (parser only) | first production head |
+
+The `bundle` command generates:
+- `<outName>.js` — minified ES module exporting the compiled lexer/parser instance
+
+------
+
 ## BNF and EBNF
 
 Tha actual grammar is specified in Extended Backus–Naur Form, with every rule followed by an action consisting in a javascript function.
