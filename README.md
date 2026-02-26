@@ -175,6 +175,41 @@ const builder = new LRGrammarBuilder()
 export default builder;
 ```
 
+### In-file Options
+
+You can export a `JalspEntryOptions` object from the entry file to set build options without passing them on the command line.  The CLI resolves options in this priority order (highest first):
+
+1. **CLI flags** (`--eof`, `--start`, etc.) — always override everything
+2. **`--options-export <name>`** — load a named export from the file
+3. **Conventional name** — `<exportName>Options` (e.g. `defaultOptions` for `--export default`, or `myBuilderOptions` for `--export myBuilder`)
+
+```typescript
+// my-parser.ts
+import { LRGrammarBuilder } from 'jalsp';
+import type { JalspEntryOptions } from 'jalsp-cli';
+
+const builder = new LRGrammarBuilder()
+  .bnf('Program = stmtList')
+  // ...
+  .opr('left', 'PLUS', 'MINUS');
+
+export default builder;
+
+// Conventional name (picked up automatically when --export default)
+export const defaultOptions: JalspEntryOptions = {
+  eof: 'EOF',
+  start: 'Program',
+  exportName: 'myParser',   // name used in generated module code
+  importFrom: 'jalsp',      // package to import from in generated code
+};
+```
+
+You may also use a custom export name and reference it with `--options-export`:
+
+```bash
+jalsp-cli serialize parser my-parser.ts --options-export myParserOptions
+```
+
 ### `serialize` command — Output JSON
 
 Compile a builder to its serialized JSON representation:
@@ -183,8 +218,11 @@ Compile a builder to its serialized JSON representation:
 # Serialize a lexer (reads default export)
 jalsp-cli serialize lexer my-lexer.ts -o lexer.json
 
-# Serialize a parser (named export, custom EOF token)
+# Serialize a parser (named export, custom EOF token via CLI flag)
 jalsp-cli serialize parser my-parser.ts --export myParser --eof EOF -o parser.json
+
+# Use in-file options (defaultOptions.eof / defaultOptions.start are picked up automatically)
+jalsp-cli serialize parser my-parser.ts
 
 # Print to stdout
 jalsp-cli serialize lexer my-lexer.ts
@@ -194,10 +232,11 @@ jalsp-cli serialize lexer my-lexer.ts
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `-e, --export <name>` | Export name from the file | `default` |
+| `-e, --export <name>` | Named export of the builder | `default` |
+| `--options-export <name>` | Named export of a `JalspEntryOptions` object | auto (`<exportName>Options`) |
 | `-o, --output <file>` | Output file path | stdout |
-| `--eof <token>` | EOF token name (parser only) | `<<EOF>>` |
-| `--start <symbol>` | Start symbol (parser only) | first production head |
+| `--eof <token>` | EOF token name (parser only, overrides in-file) | `<<EOF>>` |
+| `--start <symbol>` | Start symbol (parser only, overrides in-file) | first production head |
 
 ### `bundle` command — Output bundled JS
 
@@ -207,19 +246,23 @@ Compile a builder and bundle everything (including jalsp runtime + handlers) int
 # Bundle a lexer
 jalsp-cli bundle lexer my-lexer.ts -o dist/ --out-name my-lexer
 
-# Bundle a parser
-jalsp-cli bundle parser my-parser.ts -o dist/ --out-name my-parser --eof EOF
+# Bundle a parser using in-file options
+jalsp-cli bundle parser my-parser.ts -o dist/ --out-name my-parser
+
+# Override EOF token via CLI flag
+jalsp-cli bundle parser my-parser.ts -o dist/ --eof EOF
 ```
 
 **Options:**
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `-e, --export <name>` | Export name from the file | `default` |
+| `-e, --export <name>` | Named export of the builder | `default` |
+| `--options-export <name>` | Named export of a `JalspEntryOptions` object | auto (`<exportName>Options`) |
 | `-o, --output <dir>` | Output directory | `./dist` |
 | `--out-name <name>` | Base name for output files | `compiled` |
-| `--eof <token>` | EOF token name (parser only) | `<<EOF>>` |
-| `--start <symbol>` | Start symbol (parser only) | first production head |
+| `--eof <token>` | EOF token name (parser only, overrides in-file) | `<<EOF>>` |
+| `--start <symbol>` | Start symbol (parser only, overrides in-file) | first production head |
 
 The `bundle` command generates:
 - `<outName>.js` — minified ES module exporting the compiled lexer/parser instance

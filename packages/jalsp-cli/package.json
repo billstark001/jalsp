@@ -8,6 +8,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
+    "test": "vitest run",
     "lint": "eslint src/**/*.ts"
   },
   "dependencies": {
@@ -23,6 +24,7 @@
     "typescript": "^5.0.0"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.0.0",
+    "vitest": "^4.0.18"
   }
 }
