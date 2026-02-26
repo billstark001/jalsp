@@ -231,7 +231,7 @@ jalsp-cli serialize lexer my-lexer.ts
 **Options:**
 
 | Flag | Description | Default |
-|------|-------------|---------|
+| ---- | ----------- | ------- |
 | `-e, --export <name>` | Named export of the builder | `default` |
 | `--options-export <name>` | Named export of a `JalspEntryOptions` object | auto (`<exportName>Options`) |
 | `-o, --output <file>` | Output file path | stdout |
@@ -256,7 +256,7 @@ jalsp-cli bundle parser my-parser.ts -o dist/ --eof EOF
 **Options:**
 
 | Flag | Description | Default |
-|------|-------------|---------|
+| ---- | ----------- | ------- |
 | `-e, --export <name>` | Named export of the builder | `default` |
 | `--options-export <name>` | Named export of a `JalspEntryOptions` object | auto (`<exportName>Options`) |
 | `-o, --output <dir>` | Output directory | `./dist` |
@@ -265,9 +265,11 @@ jalsp-cli bundle parser my-parser.ts -o dist/ --eof EOF
 | `--start <symbol>` | Start symbol (parser only, overrides in-file) | first production head |
 
 The `bundle` command generates:
+
 - `<outName>.js` — minified ES module exporting the compiled lexer/parser instance
 
 ------
+a
 
 ## BNF and EBNF
 
