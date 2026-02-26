@@ -48,24 +48,22 @@ class CliExecutionError extends Error {
 interface CliExecutionResult {
   stdout: string;
   stderr: string;
-  useSource: boolean;
 }
 /** Run the CLI via tsx (directly from source) or the compiled binary if available. */
 function runCli(args: string[], cwd = ROOT): CliExecutionResult {
   // Try dist/index.js first (if built), otherwise use tsx to run src/index.ts
   const distPath = join(ROOT, 'dist', 'index.js');
-  const srcPath = join(ROOT, 'src', 'index.ts');
 
-  const useSource = !existsSync(distPath);
-
-  let result;
-  if (useSource) {
-    // Use npx to run tsx with the source TypeScript file
-    result = spawnSync('npx', ['tsx', srcPath, ...args], { cwd, encoding: 'utf8' });
-  } else {
-    // Use node to run the compiled JavaScript file
-    result = spawnSync(process.execPath, [distPath, ...args], { cwd, encoding: 'utf8' });
+  if (!existsSync(distPath)) {
+    throw new CliExecutionError(
+      `CLI dist not found at ${distPath}. Please build the CLI before running tests.`,
+      '',
+      '',
+      1,
+    );
   }
+
+  const result = spawnSync(process.execPath, [distPath, ...args], { cwd, encoding: 'utf8' });
 
   const stdout = result.stdout ?? '';
   const stderr = result.stderr ?? '';
@@ -80,7 +78,7 @@ function runCli(args: string[], cwd = ROOT): CliExecutionResult {
     );
   }
 
-  return { stdout, stderr, useSource };
+  return { stdout, stderr };
 }
 
 /** Build a fresh arithmetic lexer (used in multiple tests). */
