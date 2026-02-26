@@ -31,7 +31,7 @@ jobs:
       - name: Lint
         run: pnpm lint
       - name: Build
-        run: pnpm build
+        run: pnpm --filter jalsp build && pnpm --filter jalsp-cli build
       - name: Test
         run: pnpm test
       - name: Upload build artifacts

@@ -8,7 +8,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "test": "vitest run",
+    "test": "pnpm build && vitest run",
     "lint": "eslint src/**/*.ts"
   },
   "dependencies": {
