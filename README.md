@@ -16,34 +16,53 @@ Given appropriate instructions, Jalsp will generate both the lexer and the parse
 ## Lexer
 
 ```javascript
-var lexer = new RegExpLexerBuilder()
+const lexer = new LexerBuilder()
   .t('id', /[a-zA-Z_$][0-9a-zA-Z_$]*/)
-  .t('int', /-?[0-9]+/, (res) => Number(res[0]))
-  .t('+', /\+/)
-  .t('*', /\*/)
-  .t('(', /\(/)
-  .t(')', /\)/)
+  .t('int', /-?[0-9]+/, (res) => Number(res))
+  .t('+', '+')
+  .t('*', '*')
+  .t('(', '(')
+  .t(')', ')')
+  .t(null, /\s+/)  // ignore whitespace
   .build('eof');
 ```
 
-TBD
+### Pattern Types: String vs RegExp
+
+The lexer distinguishes between **string patterns** and **regex patterns**, with different matching behaviors:
+
+- **String patterns** (exact match): `'.t('+', '+')`
+  - Matches the exact literal string using `String.prototype.startsWith()`
+  - Handler receives only: `(lexeme: string, index: number)`
+  - Efficient for fixed tokens like operators and punctuation
+
+- **RegExp patterns** (regex match): `.t('id', /[a-zA-Z_$]\w*/)`
+  - Matches using regex with sticky flag appended
+  - Handler receives: `(lexeme: string, index: number, regexMatch: RegExpExecArray)`
+  - Useful for variable-length patterns like identifiers and numbers
+
+Use string patterns for literal tokens (operators, keywords) and regex patterns for variable-length tokens (identifiers, numbers, whitespace).
+
+Token handlers can optionally return `undefined` to discard a token (e.g., `null` as the name with `/\s+/` pattern for whitespace).
 
 ------
 
 ## Parser
 
 ```javascript
-var parser = new LRGrammarBuilder()
+const parsedGrammar = new LRGrammarBuilder()
   .bnf('E = E "+" E', (e, _, t) => '(' + e + '+' + t + ')')
   .bnf('E = E "*" E', (e, _, t) => '(' + e + '*' + t + ')')
   .bnf('E = int', i => String(i))
   .bnf('E = id', i => i)
-  .bnf('E = "("E")"', (_, e, __) => '{' + e + '}')
-
+  .bnf('E = "(" E ")"', (_, e, __) => '{' + e + '}')
   .opr(16, 'left', '*')
   .opr('left', '+')
-
   .build({ mode: 'slr', eofToken: 'eof' });
+
+// Use the parser
+const parser = new Parser(parsedGrammar);
+const result = parser.parse(lexer);
 ```
 
 TBD
@@ -269,26 +288,61 @@ The `bundle` command generates:
 - `<outName>.js` — minified ES module exporting the compiled lexer/parser instance
 
 ------
-a
 
-## BNF and EBNF
+## Grammar Formats (BNF / EBNF / ABNF)
 
-Tha actual grammar is specified in Extended Backus–Naur Form, with every rule followed by an action consisting in a javascript function.
+JALSP supports BNF-like, EBNF-like, and ABNF-like notations, but they are simplified dialects designed to feed the LR parser builder. If you are expecting full standard compliance, read the constraints below first.
 
-The EBNF in the example defines rules using Non-Terminal symbols (`Program`, `Statement`, `Expression`, ...) and terminal symbols (`(`, `)`, `integer`, `*`,...). Terminal symbols are contained in single quotes and should match the name of the tokens as yielded by the lexer.
+### Shared rules
 
-Each production can have several alternatives (separated by the pipe symbol) and each alternative can have its own action function. The action function will receive a parameter for each element of the corresponding right-hand-side part of the production.
+- Non-terminals can be either bare identifiers (`Expr`) or angle-bracketed identifiers (`<expr>`).
+- Terminals are quoted strings (`"+"` or `'+'`) and must match lexer token names.
+- Alternatives are separated by `|` (BNF/EBNF) or `/` (ABNF tokenization, but see ABNF limitations).
 
-Each rule is then terminated with a semicolon (`;`).
+### BNF (simplified)
 
-EBNF is more handier than BNF because it also adds shortcuts to define repetitions, optionals and grouping:
+Typical usage in the builder:
 
-`{ ... }` means 0 or more (...)
-
-`[ ... ]` means 0 or 1 (...)
-
-`( ... )` will group the content into one group. This is useful to inline some rules that don't need a special action for themselves, for example:
-
+```typescript
+builder.bnf('E = E "+" T | T', (e, _, t) => e + t);
 ```
-Assignment = Identifier ':=' ( 'integer' | Identifier | 'string' );
+
+Constraints and differences:
+
+- Multiple productions in a single string are not reliably supported; call `bnf()` once per rule or parse them separately.
+- Empty productions are not meaningful in BNF mode.
+- Semicolons are tokenized but are not a reliable multi-rule separator in a single parse call.
+
+### EBNF (JALSP dialect)
+
+Supported constructs:
+
+- Grouping: `( ... )`
+- Optional: `[ ... ]` (zero or one)
+- Repetition: `{ ... }` (zero or more)
+- Multiplicity: `elem * N` where `N` is a non-negative integer
+
+Example:
+
+```ebnf
+stmt = id eq num [semi] | id lp list rp;
+list = lbracket rbracket | lbracket num {comma num} rbracket;
 ```
+
+Constraints and differences:
+
+- Multiplicity is postfix only: `A * 2` is supported, `2 * A` is not.
+- `?` is tokenized but is not parsed as an operator; use `[ ... ]` instead.
+- Empty productions are allowed in EBNF (`S =`), and become epsilon productions when converted to BNF.
+- EBNF is expanded to BNF internally; complex constructs may produce auxiliary rules.
+
+### ABNF (partial)
+
+JALSP can tokenize many ABNF tokens (e.g., `%x`, `%d`, `%b`, ranges, prose, and repetition counts), but parsing is intentionally minimal:
+
+- The parser only treats `IDENTIFIER`, `STRING`, `PROSE`, `NUMBER`, and `REPEAT` as literal elements.
+- Grouping `( ... )` and optionals `[ ... ]` are tokenized but ignored by the ABNF parser.
+- Numeric value ranges and concatenation (e.g., `%x30-39`, `%x0D.0A`) are tokenized but not interpreted.
+- `=/` is recognized and tagged as incremental alternatives; you can call `abnf()` multiple times to add rules.
+
+If you need full ABNF semantics, consider pre-processing the grammar into JALSP BNF/EBNF before passing it into the builder.
