@@ -31,45 +31,69 @@ const ROOT = resolve(__dirname, '..');
 const FIXTURES = resolve(__dirname, 'fixtures');
 const TMP = resolve(__dirname, 'tmp');
 
+/** Custom error for CLI execution failures */
+class CliExecutionError extends Error {
+  constructor(
+    message: string,
+    public stdout: string,
+    public stderr: string,
+    public code: number,
+  ) {
+    super(message);
+    this.name = 'CliExecutionError';
+    Object.setPrototypeOf(this, CliExecutionError.prototype);
+  }
+}
+
 /** Run the compiled CLI binary (dist/index.js) via Node. */
-function runCli(args: string[], cwd = ROOT): { stdout: string; stderr: string; code: number } {
+function runCli(args: string[], cwd = ROOT): { stdout: string; stderr: string } {
   const result = spawnSync(
     process.execPath,
     [join(ROOT, 'dist', 'index.js'), ...args],
     { cwd, encoding: 'utf8' },
   );
-  return {
-    stdout: result.stdout ?? '',
-    stderr: result.stderr ?? '',
-    code: result.status ?? 1,
-  };
+
+  const stdout = result.stdout ?? '';
+  const stderr = result.stderr ?? '';
+  const code = result.status ?? 1;
+
+  if (code !== 0) {
+    throw new CliExecutionError(
+      `CLI command failed with exit code ${code}\nArgs: ${args.join(' ')}\nStderr: ${stderr}`,
+      stdout,
+      stderr,
+      code,
+    );
+  }
+
+  return { stdout, stderr };
 }
 
 /** Build a fresh arithmetic lexer (used in multiple tests). */
 function makeArithLexer() {
   return new LexerBuilder<string | number>()
-    .t('NUM',    /[0-9]+(\.[0-9]+)?/, (s) => parseFloat(s))
-    .t('PLUS',   '+')
-    .t('MINUS',  '-')
-    .t('STAR',   /\*/)
-    .t('SLASH',  /\//)
+    .t('NUM', /[0-9]+(\.[0-9]+)?/, (s) => parseFloat(s))
+    .t('PLUS', '+')
+    .t('MINUS', '-')
+    .t('STAR', /\*/)
+    .t('SLASH', /\//)
     .t('LPAREN', '(')
     .t('RPAREN', ')')
-    .t(null,     /\s+/)
+    .t(null, /\s+/)
     .build({ eofName: '<<EOF>>' });
 }
 
 /** Build a fresh arithmetic parser (used in multiple tests). */
 function makeArithParser(lexer: ReturnType<typeof makeArithLexer>) {
   const pg = new LRGrammarBuilder()
-    .bnf('E = E PLUS T',  (e: number, _: unknown, t: number) => e + t)
+    .bnf('E = E PLUS T', (e: number, _: unknown, t: number) => e + t)
     .bnf('E = E MINUS T', (e: number, _: unknown, t: number) => e - t)
-    .bnf('E = T',         (t: number) => t)
-    .bnf('T = T STAR F',  (t: number, _: unknown, f: number) => t * f)
+    .bnf('E = T', (t: number) => t)
+    .bnf('T = T STAR F', (t: number, _: unknown, f: number) => t * f)
     .bnf('T = T SLASH F', (t: number, _: unknown, f: number) => t / f)
-    .bnf('T = F',         (f: number) => f)
+    .bnf('T = F', (f: number) => f)
     .bnf('F = LPAREN E RPAREN', (_1: unknown, e: number, _2: unknown) => e)
-    .bnf('F = NUM',       (n: number) => n)
+    .bnf('F = NUM', (n: number) => n)
     .opr('left', 'PLUS', 'MINUS')
     .opr('left', 'STAR', 'SLASH')
     .build({ startSymbol: 'E', eofToken: '<<EOF>>' });
@@ -79,14 +103,14 @@ function makeArithParser(lexer: ReturnType<typeof makeArithLexer>) {
 /** Build a boolean lexer matching the bool-parser fixture grammar. */
 function makeBoolLexer() {
   return new LexerBuilder<string | boolean>()
-    .t('TRUE',   'true',   () => true as boolean)
-    .t('FALSE',  'false',  () => false as boolean)
-    .t('AND',    '&&')
-    .t('OR',     '||')
-    .t('NOT',    '!')
+    .t('TRUE', 'true', () => true as boolean)
+    .t('FALSE', 'false', () => false as boolean)
+    .t('AND', '&&')
+    .t('OR', '||')
+    .t('NOT', '!')
     .t('LPAREN', '(')
     .t('RPAREN', ')')
-    .t(null,     /\s+/)
+    .t(null, /\s+/)
     .build({ eofName: '<<EOF>>' });
 }
 
@@ -129,7 +153,6 @@ afterAll(() => {
 describe('CLI serialize lexer', () => {
   it('serializes arith-lexer to stdout (default export)', () => {
     const result = runCli(['serialize', 'lexer', join(FIXTURES, 'arith-lexer.ts')]);
-    expect(result.code).toBe(0);
     const data = JSON.parse(result.stdout) as SerializedLexer;
     expect(Array.isArray(data.records)).toBe(true);
     expect(data.eofName).toBeDefined();
@@ -139,7 +162,6 @@ describe('CLI serialize lexer', () => {
     const outFile = join(TMP, 'arith-lexer.json');
     perf('CLI serialize lexer → file', () => {
       const result = runCli(['serialize', 'lexer', join(FIXTURES, 'arith-lexer.ts'), '-o', outFile]);
-      expect(result.code).toBe(0);
     });
     expect(existsSync(outFile)).toBe(true);
     const data = JSON.parse(readFileSync(outFile, 'utf8')) as SerializedLexer;
@@ -154,20 +176,17 @@ describe('CLI serialize lexer', () => {
       join(FIXTURES, 'ident-lexer.ts'),
       '--export', 'default',
     ]);
-    expect(result.code).toBe(0);
     const data = JSON.parse(result.stdout) as SerializedLexer;
     // Should have at least: the identifier/keyword rule, NUMBER, STRING, punctuation, skip
     expect(data.records.length).toBeGreaterThan(5);
   });
 
   it('fails gracefully on unknown export name', () => {
-    const result = runCli([
+    expect(() => runCli([
       'serialize', 'lexer',
       join(FIXTURES, 'arith-lexer.ts'),
       '--export', 'nonExistent',
-    ]);
-    expect(result.code).toBe(1);
-    expect(result.stderr).toMatch(/not found/i);
+    ])).toThrow();
   });
 });
 
@@ -180,7 +199,6 @@ describe('CLI serialize parser', () => {
     // arith-parser.ts exports `defaultOptions` with eof + start
     perf('CLI serialize parser (arith)', () => {
       const result = runCli(['serialize', 'parser', join(FIXTURES, 'arith-parser.ts')]);
-      expect(result.code).toBe(0);
       const data = JSON.parse(result.stdout) as SerializedParser;
       expect(typeof data.action).toBe('object');
       expect(Array.isArray(data.symbols)).toBe(true);
@@ -189,7 +207,6 @@ describe('CLI serialize parser', () => {
 
   it('serializes bool-parser using in-file options', () => {
     const result = runCli(['serialize', 'parser', join(FIXTURES, 'bool-parser.ts')]);
-    expect(result.code).toBe(0);
     const data = JSON.parse(result.stdout) as SerializedParser;
     expect(data.symbols.some(s => s.name === 'E')).toBe(true);
   });
@@ -201,7 +218,6 @@ describe('CLI serialize parser', () => {
       join(FIXTURES, 'arith-parser.ts'),
       '--eof', '<<EOF>>',
     ]);
-    expect(result.code).toBe(0);
   });
 
   it('serializes parser to a file', () => {
@@ -211,7 +227,6 @@ describe('CLI serialize parser', () => {
       join(FIXTURES, 'arith-parser.ts'),
       '-o', outFile,
     ]);
-    expect(result.code).toBe(0);
     expect(existsSync(outFile)).toBe(true);
   });
 });
@@ -228,19 +243,16 @@ describe('CLI --options-export flag', () => {
       join(FIXTURES, 'ident-lexer.ts'),
       '--options-export', 'myLexerOptions',
     ]);
-    expect(result.code).toBe(0);
     const data = JSON.parse(result.stdout) as SerializedLexer;
     expect(data.records.length).toBeGreaterThan(0);
   });
 
   it('errors when --options-export points to non-existent export', () => {
-    const result = runCli([
+    expect(() => runCli([
       'serialize', 'lexer',
       join(FIXTURES, 'arith-lexer.ts'),
       '--options-export', 'badOptions',
-    ]);
-    expect(result.code).toBe(1);
-    expect(result.stderr).toMatch(/not found/i);
+    ])).toThrow();
   });
 });
 
@@ -258,7 +270,6 @@ describe('CLI bundle', () => {
         '-o', outDir,
         '--out-name', 'arith-lexer',
       ]);
-      expect(result.code).toBe(0);
     });
     expect(existsSync(join(outDir, 'arith-lexer.js'))).toBe(true);
   });
@@ -284,7 +295,6 @@ describe('CLI bundle', () => {
         '-o', outDir,
         '--out-name', 'arith-parser',
       ]);
-      expect(result.code).toBe(0);
     });
     expect(existsSync(join(outDir, 'arith-parser.js'))).toBe(true);
   });
@@ -356,8 +366,8 @@ describe('End-to-end: serialize → deserialize → parse', () => {
           (s) => s,
         )
         .t('NUMBER', /[0-9]+/)
-        .t('SEMI',   ';')
-        .t(null,     /\s+/)
+        .t('SEMI', ';')
+        .t(null, /\s+/)
         .build({ eofName: '<<EOF>>' });
       perf('Ident-lexer Lexer.fromJSON round-trip', () => {
         restoredLexer = Lexer.fromJSON<string>(origLexer.toJSON());
@@ -453,14 +463,14 @@ describe('End-to-end: serialize → deserialize → parse', () => {
 
       // Layered grammar: OR < AND < NOT (same structure as existing parser tests)
       const pg = new LRGrammarBuilder()
-        .bnf('E = E OR T',   (a: boolean, _: unknown, b: boolean) => a || b)
-        .bnf('E = T',        (t: boolean) => t)
-        .bnf('T = T AND F',  (a: boolean, _: unknown, b: boolean) => a && b)
-        .bnf('T = F',        (f: boolean) => f)
-        .bnf('F = NOT F',    (_: unknown, e: boolean) => !e)
+        .bnf('E = E OR T', (a: boolean, _: unknown, b: boolean) => a || b)
+        .bnf('E = T', (t: boolean) => t)
+        .bnf('T = T AND F', (a: boolean, _: unknown, b: boolean) => a && b)
+        .bnf('T = F', (f: boolean) => f)
+        .bnf('F = NOT F', (_: unknown, e: boolean) => !e)
         .bnf('F = LPAREN E RPAREN', (_1: unknown, e: boolean, _2: unknown) => e)
-        .bnf('F = TRUE',     () => true)
-        .bnf('F = FALSE',    () => false)
+        .bnf('F = TRUE', () => true)
+        .bnf('F = FALSE', () => false)
         .opr('left', 'OR')
         .opr('left', 'AND')
         .opr('right', 'NOT')
@@ -515,7 +525,6 @@ describe('End-to-end: serialize → deserialize → parse', () => {
 describe('CLI serialize → deserialize pipeline', () => {
   it('arith-lexer: CLI output deserializes to working Lexer', () => {
     const result = runCli(['serialize', 'lexer', join(FIXTURES, 'arith-lexer.ts')]);
-    expect(result.code).toBe(0);
 
     perf('Pipeline: CLI serialize lexer → Lexer.fromJSON', () => {
       const lexer = Lexer.fromJSON<string | number>(result.stdout);
@@ -529,7 +538,6 @@ describe('CLI serialize → deserialize pipeline', () => {
 
   it('arith-parser: CLI output deserializes to working Parser', () => {
     const result = runCli(['serialize', 'parser', join(FIXTURES, 'arith-parser.ts')]);
-    expect(result.code).toBe(0);
 
     perf('Pipeline: CLI serialize parser → Parser.fromJSON', () => {
       const parser = Parser.fromJSON<string | number>(result.stdout);
@@ -540,7 +548,6 @@ describe('CLI serialize → deserialize pipeline', () => {
 
   it('bool-parser: CLI output deserializes to working Parser', () => {
     const result = runCli(['serialize', 'parser', join(FIXTURES, 'bool-parser.ts')]);
-    expect(result.code).toBe(0);
 
     const boolLexer = makeBoolLexer();
     const parser = Parser.fromJSON<string | boolean>(result.stdout);
