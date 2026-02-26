@@ -1,0 +1,64 @@
+name: Publish to NPM
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Package to publish (jalsp, jalsp-cli, or all)'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - jalsp
+          - jalsp-cli
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run tests
+        run: pnpm test
+      
+      - name: Build packages
+        run: pnpm build
+      
+      - name: Publish jalsp
+        if: github.event.inputs.package == 'jalsp' || github.event.inputs.package == 'all' || github.event_name == 'release'
+        run: |
+          cd packages/jalsp
+          pnpm publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      
+      - name: Publish jalsp-cli
+        if: github.event.inputs.package == 'jalsp-cli' || github.event.inputs.package == 'all' || github.event_name == 'release'
+        run: |
+          cd packages/jalsp-cli
+          pnpm publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
