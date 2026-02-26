@@ -2,11 +2,11 @@
 import { Command } from 'commander';
 import { writeFileSync, mkdirSync } from 'fs';
 import { resolve, join, dirname } from 'path';
-import { pathToFileURL } from 'url';
 import { rollup as rollupBuild, type Plugin } from 'rollup';
 import { nodeResolve as rollupResolve } from '@rollup/plugin-node-resolve';
 import { generateLexerModule, generateParserModule } from 'jalsp';
 import type { LexerBuilder, LRGrammarBuilder, GrammarBuildingOptions } from 'jalsp';
+import { register } from 'tsx/esm/api';
 
 // These plugins use CJS-only type definitions; cast via unknown to bypass NodeNext type resolution
 const rollupCommonjs = ((await import('@rollup/plugin-commonjs')) as unknown as { default: () => Plugin }).default;
@@ -42,6 +42,8 @@ export interface JalspEntryOptions {
 
 const program = new Command();
 program.name('jalsp-cli').description('Compile and bundle jalsp lexers and parsers').version('0.1.0');
+const tsconfigPath = new URL('../tsconfig.json', import.meta.url).pathname;
+const tsxLoader = register({ namespace: 'jalsp-cli', tsconfig: tsconfigPath });
 
 /**
  * Load an export from an ESM JS/TS file.
@@ -50,8 +52,7 @@ program.name('jalsp-cli').description('Compile and bundle jalsp lexers and parse
  */
 async function loadExport(file: string, exportName: string): Promise<unknown> {
   const absPath = resolve(file);
-  const fileUrl = pathToFileURL(absPath).href;
-  const mod = await import(fileUrl);
+  const mod = await tsxLoader.import(absPath, import.meta.url);
   let value: unknown;
   if (exportName === 'default') {
     value = mod.default ?? mod;
@@ -78,8 +79,7 @@ async function loadEntryOptions(
   optionsExportName?: string,
 ): Promise<JalspEntryOptions> {
   const absPath = resolve(file);
-  const fileUrl = pathToFileURL(absPath).href;
-  const mod = await import(fileUrl);
+  const mod = await tsxLoader.import(absPath, import.meta.url);
 
   // 1. Explicit --options-export flag
   if (optionsExportName) {

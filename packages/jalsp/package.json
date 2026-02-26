@@ -2,6 +2,7 @@
   "name": "jalsp",
   "version": "0.1.0",
   "description": "Just Another Lexical and Syntactic Parser (in JavaScript).",
+  "type": "module",
   "main": "dist/index.cjs.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
